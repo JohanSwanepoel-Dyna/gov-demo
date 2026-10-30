@@ -11,7 +11,7 @@ What the demo needs in the Dynatrace tenant, and its status. The lab tenant is S
 | 3 | OpenPipeline logs pipeline and routing entry | Business events and the deployment event from logs | Applied and verified |
 | 4 | OneAgent Python sensors | Leave disabled | As found |
 | 5 | RUM application and funnel | Browser sessions, funnel at the upload step | Auto-created, funnel verified |
-| 6 | Masking rule for TFN and Medicare | Show masking in logs and prompts | Logs applied and verified. Span pipeline created, routing not applied yet (needs your go-ahead) |
+| 6 | Masking rule for TFN and Medicare | Show masking in logs and prompts | Applied and verified for logs, business events and recorded prompts |
 | 7 | SLOs | Claim submission and assistant | Not built, proposals below |
 | 8 | Davis anomaly detection tuning | A clean problem for the peak scenario | Not done |
 | 9 | Dashboard | Journey, payments, AI usage and cost, RUM funnel, change | Built, see section 9 |
@@ -113,7 +113,13 @@ fetch logs, from: now()-30m
 | summarize lines = count(), masked = countIf(contains(content, "\"tfn\": \"[masked]\"")), clear = countIf(not contains(content, "\"tfn\": \"[masked]\""))
 ```
 
-Spans (prepared, not routed): the pipeline `pipeline_gov_demo_spans` (`docs/openpipeline/gov-demo-spans-pipeline.yaml`) exists in the tenant and masks `gen_ai.input.messages` and `gen_ai.output.messages`, but no spans routing exists, so it does nothing yet. Applying the routing (`docs/openpipeline/gov-demo-spans-routing.yaml`, after putting the pipeline objectId into it) creates a new shared spans routing object that did not exist before, so it was held back for an explicit go-ahead. After applying, check that a new chat span still has its `gen_ai.*` attributes and the service entity (so AI Observability keeps working), then that a prompt with a TFN reads `My TFN is [masked]`. The pattern itself was tested on a recorded prompt.
+Spans (applied and verified): the pipeline `pipeline_gov_demo_spans` (`docs/openpipeline/gov-demo-spans-pipeline.yaml`) masks `gen_ai.input.messages` and `gen_ai.output.messages`, and a routing entry sends the claims-api spans that carry them to it (`docs/openpipeline/gov-demo-spans-routing.yaml`, the pipelineId in that file is a placeholder, use the objectId from `dtctl get settings --schema builtin:openpipeline.spans.pipelines -o json`). The spans routing is a shared tenant setting that did not exist before, it holds this one entry. Result: 28 of 28 new chat spans with a TFN in the prompt arrived masked, none in clear, and a span compared before and after the routing had the same 60 attributes (service entity, `dt.smartscape.gen_ai.*`, tokens and finish reason all intact), so AI Observability is not affected. A recorded prompt now reads `My TFN is [masked]`. Check:
+```
+fetch spans, from: now()-30m
+| filter service.name == "claims-api" and startsWith(toString(span.name), "chat ") and isNotNull(gen_ai.input.messages)
+| summarize chats = count(), masked = countIf(contains(toString(gen_ai.input.messages), "TFN is [masked]")), clear = countIf(contains(toString(gen_ai.input.messages), "123456782"))
+```
+Roll back by deleting the routing entry (Settings, OpenPipeline, Spans, Dynamic routing) or the whole spans routing object. Spans not matching the entry are not affected.
 
 Limits: only the labelled forms above are masked. "my tax file number is 123456782" or a bare number is not. Medicare is masked only in the labelled log field. Lines ingested before the rule keep their clear values until the bucket retention expires (this lab only holds synthetic data). Turn `log_pii` and prompt recording off (`make scenario NAME=baseline`) when you are not demonstrating.
 
