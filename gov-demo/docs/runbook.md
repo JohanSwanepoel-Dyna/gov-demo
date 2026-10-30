@@ -146,7 +146,7 @@ fetch bizevents, from: now()-4h | filter event.type == "claim.payment_failed" | 
 
 Finish with `make scenario NAME=baseline`. This matters: the load profile returns to baseline by itself after the peak, but the scenario toggles stay set, so the stub stays slow and the worker stays on one thread, and your Davis problems and SLOs keep burning, until you run `baseline`. It works even while the stub is saturated and takes a couple of seconds. The queue then drains (the worker returns to two threads).
 
-Davis problems: during the lab runs Davis opened 9 problems on these services in 6 hours, mostly "Response time degradation" and one "Failure rate increase" (for example P-261047, still ACTIVE with root cause shown as `web`, others closed). Treat the root cause as unreliable for the story: in the records checked it was `web` or empty, not the legacy stub, so do not promise "Davis points at the legacy tier" without checking the live problem first. Tuning Davis so the peak raises a clean problem is still tenant work. The load profile returns to baseline by itself after the 10 minute hold and ramp down.
+Davis: the tenant's detection is deliberately not tuned and the SLOs are the burn story. Davis does raise problems for the peak, but late (about 10 minutes in the last run) and as separate problems: `web` ends at "Requests to unmonitored hosts" (it sees the OpenTelemetry-only `claims-api` as an unmonitored host), the `claims-api` problems stand alone, and the legacy stub itself may not get one. If asked, call it a mixed estate effect, do not promise "Davis points at the legacy tier", and see `dynatrace-config.md` section 8 for the detail and the two options if you want to improve it. The load profile returns to baseline by itself after the 10 minute hold and ramp down.
 
 ## upload_dropoff: RUM funnel
 
@@ -248,6 +248,6 @@ Not checked in the UI: the Errors tab of AI Observability.
 - Guardrail activation card and by-type chart stay at 0.
 - Runtime vulnerability detection of the old log4j in the legacy stub has not been confirmed (spec item 6). Check Security, Vulnerabilities for `legacy-stub`.
 - Masking covers the labelled TFN and Medicare forms only. The SLO window is 2 hours, so burn lingers after a scenario.
-- Davis problems appear during the peak, but the root cause was not the legacy stub in the records checked.
+- Davis problems appear during the peak, late and fragmented, with no root cause on the stub. Decided not to tune, the SLOs carry the burn story.
 - Session Replay not verified.
 - Hallucination needs an evaluation path (spec item 1), not built.

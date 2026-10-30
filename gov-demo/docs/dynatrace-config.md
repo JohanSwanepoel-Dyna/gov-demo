@@ -13,7 +13,7 @@ What the demo needs in the Dynatrace tenant, and its status. The lab tenant is S
 | 5 | RUM application and funnel | Browser sessions, funnel at the upload step | Auto-created, funnel verified |
 | 6 | Masking rule for TFN and Medicare | Show masking in logs and prompts | Applied and verified for logs, business events and recorded prompts |
 | 7 | SLOs | Claim submission, eligibility, payment completion, assistant | Built, six SLOs, see section 7 |
-| 8 | Davis anomaly detection tuning | A clean problem for the peak scenario | Not done |
+| 8 | Davis anomaly detection tuning | A clean problem for the peak scenario | Decided not to tune, the SLOs carry the burn story (see section 8) |
 | 9 | Dashboard | Journey, payments, AI usage and cost, RUM funnel, change | Built, see section 9 |
 | 10 | Vulnerability detection of the old log4j | Security story | Not confirmed |
 
@@ -140,9 +140,20 @@ The submission SLOs were in the original spec, but claim submission does not bur
 
 Evaluate one: `dtctl exec slo <id>`. First evaluation, right after creating them (the earlier peak runs were still inside the window): payment completion FAILURE at 98.36 percent, eligibility latency FAILURE at 75.86 percent, the other four SUCCESS. They recover on their own once the window has passed the peak. After a demo, `make scenario NAME=baseline` and wait for the 2 hour window to clear, or accept the red ones as the "after the incident" view.
 
-## 8. Davis anomaly detection
+## 8. Davis anomaly detection (decided: not tuned)
 
-Not tuned. During the lab peak runs Davis opened 9 problems on the demo services in 6 hours, mainly "Response time degradation" plus one "Failure rate increase". The root cause shown was `web` or empty, not the legacy stub. If the demo story needs "Davis points at the legacy tier", tune the detection on the legacy service and check a live problem first.
+Decision: the detection settings in the tenant are left alone, and the SLOs (section 7) are the way to show damage and burn. What led to it, from the lab runs:
+
+- Davis does raise problems for `monday_peak`, but late (about 10 minutes into the peak in the last run) and fragmented: separate problems for `web` and `claims-api`, none for the legacy stub, which is the real bottleneck (its learned baseline probably absorbed the slow behaviour after several peaks, not proven).
+- The `web` problems end at the placeholder entity "Requests to unmonitored hosts" (the problem records carry it as `root_cause_entity_id`). OneAgent on `web` sees its calls to `claims-api` as calls to an unmonitored host because the Python services are OpenTelemetry only. The `claims-api` problems relate only to the cloud application, namespace and cluster, so nothing links them to `web`'s.
+- The platform topology (`smartscapeEdges "calls"`) has the right service to service links, plus a few stale wrong ones from before the trace parent fix (they age out). Davis problem correlation still ended at the placeholder, so it appears to follow the OneAgent built call graph. This is a hypothesis, Davis internals were not visible.
+- Tuning the auto-adaptive sensitivity would tune to noise: the laptop runs the demo in bursts and sleeps, so baselines are patchy.
+
+If this is revisited, there are two real options, neither tried:
+- Enable the OneAgent Python sensors for FastAPI and Starlette (a tenant-wide OneAgent feature). `claims-api` becomes monitored, the placeholder should go and Davis could follow `web` to `claims-api` to the stub. Cost: possible duplicate spans next to the OpenTelemetry ones and a muddier "OneAgent plus OTel" story. Test on one `monday_peak` run.
+- Fixed threshold rules scoped to the five demo services (for example eligibility response time over 1 second for 3 of 5 minutes, any failed payment). Deterministic on any machine because the injected faults are large, but it does not connect the chain, `web` would still end at the placeholder.
+
+On a machine that runs always-on, let the demo sit at baseline load for a day or two before a customer demo so Davis has a baseline, and still do not rely on it for the story.
 
 ## 9. Dashboard
 
