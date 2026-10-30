@@ -144,7 +144,7 @@ kubectl exec -n gov-demo deploy/postgres -c postgres -- sh -c "psql -U \$POSTGRE
 fetch bizevents, from: now()-4h | filter event.type == "claim.payment_failed" | summarize n = count(), by: {error}
 ```
 
-Finish with `make scenario NAME=baseline`. It works even while the stub is saturated and takes a couple of seconds. The queue then drains (the worker returns to two threads).
+Finish with `make scenario NAME=baseline`. This matters: the load profile returns to baseline by itself after the peak, but the scenario toggles stay set, so the stub stays slow and the worker stays on one thread, and your Davis problems and SLOs keep burning, until you run `baseline`. It works even while the stub is saturated and takes a couple of seconds. The queue then drains (the worker returns to two threads).
 
 Davis problems: during the lab runs Davis opened 9 problems on these services in 6 hours, mostly "Response time degradation" and one "Failure rate increase" (for example P-261047, still ACTIVE with root cause shown as `web`, others closed). Treat the root cause as unreliable for the story: in the records checked it was `web` or empty, not the legacy stub, so do not promise "Davis points at the legacy tier" without checking the live problem first. Tuning Davis so the peak raises a clean problem is still tenant work. The load profile returns to baseline by itself after the 10 minute hold and ramp down.
 
