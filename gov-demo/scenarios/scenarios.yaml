@@ -1,0 +1,62 @@
+# Named demo scenarios. run_scenario.py resets every toggle to `defaults`, then applies the scenario's `toggles`.
+# Quote on and off: unquoted they are booleans in YAML.
+# `load` is the Locust profile: baseline, peak, assistant or none. `browser` means Playwright load run separately, Locust stays at baseline.
+defaults:
+  legacy-stub:    {mode: normal, pool_threads: 8}
+  claims-api:     {eligibility_release: v1, upload_fault: none, log_pii: "off", capture_content: "off"}
+  llm-gateway:    {latency: normal, provider_errors: none, provider_error_rate: 30, guardrails: "on", response_mode: grounded}
+  payment-worker: {concurrency: 2, processing_delay_ms: 0}
+
+scenarios:
+  baseline:
+    description: All defaults. Baselines and healthy SLOs.
+    load: baseline
+  monday_peak:
+    description: Slow legacy tier and one worker. Davis root cause on legacy, SLO burn on submission, queue growth.
+    toggles:
+      legacy-stub: {mode: slow}
+      payment-worker: {concurrency: 1}
+    load: peak
+  bad_release:
+    description: Eligibility release v2_bad. Deployment event correlation and a problem on claims-api.
+    toggles:
+      claims-api: {eligibility_release: v2_bad}
+    load: baseline
+  upload_dropoff:
+    description: Slow uploads. RUM funnel drop-off and Session Replay.
+    toggles:
+      claims-api: {upload_fault: slow}
+    load: browser
+  ai_injection:
+    description: Guardrails off. Injection prompts fail open and expose another citizen's data.
+    toggles:
+      llm-gateway: {guardrails: "off"}
+    load: assistant
+  ai_pii:
+    description: Prompt capture and PII logging on. Log and span masking through OpenPipeline.
+    toggles:
+      claims-api: {capture_content: "on", log_pii: "on"}
+    load: assistant
+  ai_cost_spike:
+    description: Verbose answers. Token and cost tracking.
+    toggles:
+      llm-gateway: {response_mode: verbose}
+    load: assistant
+  ai_hallucination:
+    description: Wrong amounts and a non-existent policy clause. Guardrails are off because the grounding check would otherwise block them.
+    toggles:
+      llm-gateway: {response_mode: hallucinated, guardrails: "off"}
+    load: assistant
+  provider_outage:
+    description: The model provider returns 503 for part of the requests. Error rate and dependency health.
+    toggles:
+      llm-gateway: {provider_errors: "503"}
+    load: assistant
+  show_prompts:
+    description: Record prompts and answers so the AI Observability Prompts view fills. Not a fault scenario.
+    toggles:
+      claims-api: {capture_content: "on"}
+    load: assistant
+  reset:
+    description: All defaults, no load.
+    load: none

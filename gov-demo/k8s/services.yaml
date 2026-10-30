@@ -1,0 +1,252 @@
+# One Deployment and Service per app service.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: web}
+  template:
+    metadata:
+      labels: {app: web}
+    spec:
+      containers:
+        - name: web
+          image: gov-demo/web:dev
+          imagePullPolicy: IfNotPresent
+          securityContext: {runAsUser: 1000, runAsNonRoot: true}
+          ports:
+            - containerPort: 8080
+          env:
+            - {name: CLAIMS_API_URL, value: "http://claims-api:8000"}
+          readinessProbe:
+            httpGet: {path: /healthz, port: 8080}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /healthz, port: 8080}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {memory: 128Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+spec:
+  type: NodePort
+  selector: {app: web}
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: claims-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: claims-api}
+  template:
+    metadata:
+      labels: {app: claims-api}
+    spec:
+      containers:
+        - name: claims-api
+          image: gov-demo/claims-api:dev
+          imagePullPolicy: IfNotPresent
+          securityContext: {runAsUser: 10001, runAsNonRoot: true}
+          ports:
+            - containerPort: 8000
+          env:
+            - {name: POSTGRES_USER, valueFrom: {secretKeyRef: {name: gov-demo-env, key: POSTGRES_USER}}}
+            - {name: POSTGRES_PASSWORD, valueFrom: {secretKeyRef: {name: gov-demo-env, key: POSTGRES_PASSWORD}}}
+            - {name: POSTGRES_DB, valueFrom: {secretKeyRef: {name: gov-demo-env, key: POSTGRES_DB}}}
+            - {name: DATABASE_URL, value: "postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/$(POSTGRES_DB)"}
+            - {name: LEGACY_URL, value: "http://legacy-stub:8300"}
+            - {name: K8S_NAMESPACE, valueFrom: {fieldRef: {fieldPath: metadata.namespace}}}
+            - {name: K8S_POD_NAME, valueFrom: {fieldRef: {fieldPath: metadata.name}}}
+            - {name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://telemetry-ingest.dynatrace:4318"}
+            - {name: OTEL_EXPORTER_OTLP_PROTOCOL, value: "http/protobuf"}
+            - {name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE, value: "delta"}
+            - {name: OTEL_RESOURCE_ATTRIBUTES, value: "k8s.namespace.name=$(K8S_NAMESPACE),k8s.pod.name=$(K8S_POD_NAME)"}
+            - {name: CONTROL_TOKEN, valueFrom: {secretKeyRef: {name: gov-demo-env, key: CONTROL_TOKEN}}}
+          readinessProbe:
+            httpGet: {path: /healthz, port: 8000}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /healthz, port: 8000}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {memory: 256Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: claims-api
+spec:
+  type: ClusterIP
+  selector: {app: claims-api}
+  ports:
+    - port: 8000
+      targetPort: 8000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: llm-gateway}
+  template:
+    metadata:
+      labels: {app: llm-gateway}
+    spec:
+      containers:
+        - name: llm-gateway
+          image: gov-demo/llm-gateway:dev
+          imagePullPolicy: IfNotPresent
+          securityContext: {runAsUser: 10001, runAsNonRoot: true}
+          ports:
+            - containerPort: 8100
+          env:
+            - {name: CONTROL_TOKEN, valueFrom: {secretKeyRef: {name: gov-demo-env, key: CONTROL_TOKEN}}}
+            - {name: K8S_NAMESPACE, valueFrom: {fieldRef: {fieldPath: metadata.namespace}}}
+            - {name: K8S_POD_NAME, valueFrom: {fieldRef: {fieldPath: metadata.name}}}
+            - {name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://telemetry-ingest.dynatrace:4318"}
+            - {name: OTEL_EXPORTER_OTLP_PROTOCOL, value: "http/protobuf"}
+            - {name: OTEL_RESOURCE_ATTRIBUTES, value: "k8s.namespace.name=$(K8S_NAMESPACE),k8s.pod.name=$(K8S_POD_NAME)"}
+          readinessProbe:
+            httpGet: {path: /healthz, port: 8100}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /healthz, port: 8100}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {memory: 256Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: llm-gateway
+spec:
+  type: ClusterIP
+  selector: {app: llm-gateway}
+  ports:
+    - port: 8100
+      targetPort: 8100
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: payment-worker}
+  template:
+    metadata:
+      labels: {app: payment-worker}
+    spec:
+      containers:
+        - name: payment-worker
+          image: gov-demo/payment-worker:dev
+          imagePullPolicy: IfNotPresent
+          securityContext: {runAsUser: 10001, runAsNonRoot: true}
+          ports:
+            - containerPort: 8200
+          env:
+            - {name: POSTGRES_USER, valueFrom: {secretKeyRef: {name: gov-demo-env, key: POSTGRES_USER}}}
+            - {name: POSTGRES_PASSWORD, valueFrom: {secretKeyRef: {name: gov-demo-env, key: POSTGRES_PASSWORD}}}
+            - {name: POSTGRES_DB, valueFrom: {secretKeyRef: {name: gov-demo-env, key: POSTGRES_DB}}}
+            - {name: DATABASE_URL, value: "postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/$(POSTGRES_DB)"}
+            - {name: LEGACY_URL, value: "http://legacy-stub:8300"}
+            - {name: K8S_NAMESPACE, valueFrom: {fieldRef: {fieldPath: metadata.namespace}}}
+            - {name: K8S_POD_NAME, valueFrom: {fieldRef: {fieldPath: metadata.name}}}
+            - {name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://telemetry-ingest.dynatrace:4318"}
+            - {name: OTEL_EXPORTER_OTLP_PROTOCOL, value: "http/protobuf"}
+            - {name: OTEL_RESOURCE_ATTRIBUTES, value: "k8s.namespace.name=$(K8S_NAMESPACE),k8s.pod.name=$(K8S_POD_NAME)"}
+            - {name: CONTROL_TOKEN, valueFrom: {secretKeyRef: {name: gov-demo-env, key: CONTROL_TOKEN}}}
+          readinessProbe:
+            httpGet: {path: /healthz, port: 8200}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /healthz, port: 8200}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {memory: 256Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-worker
+spec:
+  type: ClusterIP
+  selector: {app: payment-worker}
+  ports:
+    - port: 8200
+      targetPort: 8200
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: legacy-stub
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: legacy-stub}
+  template:
+    metadata:
+      labels: {app: legacy-stub}
+    spec:
+      containers:
+        - name: legacy-stub
+          image: gov-demo/legacy-stub:dev
+          imagePullPolicy: IfNotPresent
+          securityContext: {runAsUser: 10001, runAsNonRoot: true}
+          ports:
+            - containerPort: 8300
+            - containerPort: 8301
+          env:
+            - {name: JAVA_OPTS, value: "-Xmx384m"}
+            - {name: CONTROL_TOKEN, valueFrom: {secretKeyRef: {name: gov-demo-env, key: CONTROL_TOKEN}}}
+          startupProbe:
+            httpGet: {path: /healthz, port: 8301}
+            periodSeconds: 3
+            failureThreshold: 40
+          readinessProbe:
+            httpGet: {path: /healthz, port: 8301}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /healthz, port: 8301}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            requests: {cpu: 50m, memory: 384Mi}
+            limits: {memory: 512Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: legacy-stub
+spec:
+  type: ClusterIP
+  selector: {app: legacy-stub}
+  ports:
+    - name: http
+      port: 8300
+      targetPort: 8300
+    - name: control
+      port: 8301
+      targetPort: 8301

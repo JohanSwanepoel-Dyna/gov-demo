@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: locust
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: locust}
+  template:
+    metadata:
+      labels: {app: locust}
+    spec:
+      containers:
+        - name: locust
+          image: gov-demo/locust:dev
+          imagePullPolicy: IfNotPresent
+          securityContext: {runAsUser: 10001, runAsNonRoot: true}
+          ports:
+            - containerPort: 8089
+          env:
+            - {name: LOAD_PROFILE, value: baseline}
+            - {name: CONTROL_TOKEN, valueFrom: {secretKeyRef: {name: gov-demo-env, key: CONTROL_TOKEN}}}
+          volumeMounts:
+            - {name: credentials, mountPath: /data, readOnly: true}
+          readinessProbe:
+            httpGet: {path: /, port: 8089}
+            periodSeconds: 5
+          resources:
+            requests: {cpu: 100m, memory: 192Mi}
+            limits: {memory: 384Mi}
+      volumes:
+        - name: credentials
+          secret:
+            secretName: gov-demo-credentials
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: locust
+spec:
+  type: NodePort
+  selector: {app: locust}
+  ports:
+    - port: 8089
+      targetPort: 8089
+      nodePort: 30089

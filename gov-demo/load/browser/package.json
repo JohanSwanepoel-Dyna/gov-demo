@@ -1,0 +1,10 @@
+{
+  "name": "browser-load",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Playwright browser load for the Carer Support Portal. Run on demand.",
+  "dependencies": {
+    "playwright-core": "1.49.1"
+  }
+}

@@ -1,0 +1,116 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: {app: postgres}
+  template:
+    metadata:
+      labels: {app: postgres}
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16.6-bookworm
+          ports:
+            - containerPort: 5432
+          env:
+            - {name: POSTGRES_USER, valueFrom: {secretKeyRef: {name: gov-demo-env, key: POSTGRES_USER}}}
+            - {name: POSTGRES_PASSWORD, valueFrom: {secretKeyRef: {name: gov-demo-env, key: POSTGRES_PASSWORD}}}
+            - {name: POSTGRES_DB, valueFrom: {secretKeyRef: {name: gov-demo-env, key: POSTGRES_DB}}}
+            - {name: PGDATA, value: /var/lib/postgresql/data/pgdata}
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
+            periodSeconds: 5
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {memory: 512Mi}
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/postgresql/data}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: postgres-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  selector: {app: postgres}
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: seed
+spec:
+  backoffLimit: 6
+  template:
+    metadata:
+      labels: {app: seed}
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: seed
+          image: gov-demo/seed:dev
+          imagePullPolicy: IfNotPresent
+          securityContext: {runAsUser: 10001, runAsNonRoot: true}
+          env:
+            - {name: POSTGRES_USER, valueFrom: {secretKeyRef: {name: gov-demo-env, key: POSTGRES_USER}}}
+            - {name: POSTGRES_PASSWORD, valueFrom: {secretKeyRef: {name: gov-demo-env, key: POSTGRES_PASSWORD}}}
+            - {name: POSTGRES_DB, valueFrom: {secretKeyRef: {name: gov-demo-env, key: POSTGRES_DB}}}
+            - {name: DATABASE_URL, value: "postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/$(POSTGRES_DB)"}
+            - {name: CREDENTIALS_CSV, value: /tmp/credentials.csv}
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {memory: 128Mi}
+---
+# Keeps the database small under constant load by deleting demo data older than RETENTION_HOURS.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: retention
+spec:
+  schedule: "*/15 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels: {app: retention}
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: retention
+              image: gov-demo/seed:dev
+              imagePullPolicy: IfNotPresent
+              command: ["python", "retention.py"]
+              securityContext: {runAsUser: 10001, runAsNonRoot: true}
+              env:
+                - {name: POSTGRES_USER, valueFrom: {secretKeyRef: {name: gov-demo-env, key: POSTGRES_USER}}}
+                - {name: POSTGRES_PASSWORD, valueFrom: {secretKeyRef: {name: gov-demo-env, key: POSTGRES_PASSWORD}}}
+                - {name: POSTGRES_DB, valueFrom: {secretKeyRef: {name: gov-demo-env, key: POSTGRES_DB}}}
+                - {name: DATABASE_URL, value: "postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/$(POSTGRES_DB)"}
+                - {name: RETENTION_HOURS, value: "6"}
+              resources:
+                requests: {cpu: 20m, memory: 48Mi}
+                limits: {memory: 96Mi}

@@ -1,0 +1,38 @@
+:root { --navy: #1b2a41; --accent: #0b5cad; --line: #c8ccd0; }
+* { box-sizing: border-box; }
+body { margin: 0; font: 16px/1.5 Arial, Helvetica, sans-serif; color: #1a1a1a; background: #f5f6f7; }
+.wrap { max-width: 760px; margin: 0 auto; padding: 0 16px; }
+.band { background: var(--navy); color: #fff; padding: 12px 0; }
+.band h1 { margin: 0; font-size: 1.6rem; }
+.agency { margin: 0; font-size: 0.85rem; opacity: 0.85; }
+.foot { margin-top: 48px; font-size: 0.85rem; }
+.foot p { margin: 0; }
+main { padding-top: 24px; }
+.steps { display: flex; gap: 8px; list-style: none; padding: 0; margin: 0 0 24px; }
+.steps li { flex: 1; padding: 6px 8px; border-bottom: 4px solid var(--line); font-size: 0.85rem; color: #555; }
+.steps li.done { border-color: var(--accent); color: #1a1a1a; }
+.steps li.current { border-color: var(--accent); font-weight: bold; color: #1a1a1a; }
+.card { background: #fff; border: 1px solid var(--line); padding: 20px; }
+label { display: block; margin: 12px 0 4px; font-weight: bold; }
+input, select { display: block; font: inherit; padding: 8px; width: 100%; max-width: 360px; border: 1px solid #777; }
+button { display: block; font: inherit; margin-top: 20px; padding: 10px 20px; background: var(--accent); color: #fff; border: 0; cursor: pointer; }
+.error { color: #a40000; font-weight: bold; }
+.error:empty { display: none; }
+.note { background: #eef3f9; padding: 8px 12px; margin: 12px 0; }
+dl { display: grid; grid-template-columns: 200px 1fr; gap: 6px 12px; }
+dt { font-weight: bold; }
+dd { margin: 0; }
+.chat { position: fixed; right: 16px; bottom: 16px; width: 320px; max-width: calc(100% - 32px); }
+.chat-toggle { margin: 0; width: 100%; }
+.chat-body { background: #fff; border: 1px solid var(--line); padding: 12px; margin-top: 4px; }
+.chat-log { max-height: 240px; overflow-y: auto; margin-bottom: 8px; }
+.chat-log p { margin: 4px 0; padding: 6px 8px; }
+.chat-user { background: #eef3f9; }
+.chat-bot { background: #f5f6f7; }
+.chat-banner { background: #fff4d6; border: 1px solid #c79100; padding: 6px 8px; margin: 4px 0; }
+.chat-body input { max-width: none; }
+.chat-body button { margin-top: 8px; }
+.chat-chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; }
+.chat-chips-label { margin: 8px 0 0; font-size: 0.8rem; color: #555; }
+.chat-body .chat-chip { margin: 0; padding: 4px 8px; font-size: 0.85rem; background: #fff; color: var(--accent); border: 1px solid var(--accent); }
+.chat-body .chat-chip:disabled { opacity: 0.5; cursor: wait; }

@@ -1,0 +1,10 @@
+.env
+db/out/*
+!db/out/.gitkeep
+node_modules/
+__pycache__/
+target/
+secrets/*
+!secrets/.gitkeep
+!secrets/*.example
+.venv/

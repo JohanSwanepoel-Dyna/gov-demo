@@ -1,0 +1,136 @@
+# OpenPipeline logs pipeline for the gov-demo business events.
+# Tenant-side configuration, applied with: dtctl apply -f docs/openpipeline/gov-demo-logs-pipeline.yaml
+# Needs a routing entry to send gov-demo logs here (see docs/dynatrace-config.md).
+schemaId: builtin:openpipeline.logs.pipelines
+scope: environment
+value:
+  customId: pipeline_gov_demo_bizevents
+  displayName: gov-demo business events
+  groupRole: memberPipeline
+  routing: routable
+  metadataList: []
+  davis:
+    processors:
+      - id: processor_gov_demo_deployment
+        type: davis
+        enabled: true
+        description: Eligibility engine release change as a deployment event
+        matcher: isNotNull(deployment_name)
+        davis:
+          properties:
+            - key: event.type
+              value: CUSTOM_DEPLOYMENT
+            - key: event.name
+              value: "{deployment_name} release {release_version}"
+            - key: event.description
+              value: "{deployment_name} changed from {previous_version} to {release_version}"
+            - key: deployment.name
+              value: "{deployment_name}"
+            - key: deployment.version
+              value: "{release_version}"
+            - key: deployment.previous_version
+              value: "{previous_version}"
+            - key: dt.source_entity
+              value: "{dt.entity.service}"
+  metricExtraction:
+    processors: []
+  storage:
+    processors: []
+  processing:
+    processors:
+      - id: processor_gov_demo_parse_json
+        type: dql
+        enabled: true
+        description: Parse the JSON log line into fields
+        matcher: matchesValue(k8s.namespace.name, "gov-demo") and (matchesPhrase(content, "business_event") or matchesPhrase(content, "deployment_event"))
+        dql:
+          script: |-
+            parse content, "JSON:j"
+            | fieldsAdd business_event = j[business_event], claim_id = j[claim_id], payment_type = j[payment_type], decision = j[decision], duration_ms = j[duration_ms], size_bytes = j[size_bytes], amount_cents = j[amount_cents], queue_wait_ms = j[queue_wait_ms], error = j[error], deployment_event = j[deployment_event], deployment_name = j[deployment_name], release_version = j[release_version], previous_version = j[previous_version]
+            | fieldsRemove j
+  dataExtraction:
+    processors:
+      - id: processor_gov_demo_claim_draft_created
+        type: bizevent
+        enabled: true
+        description: Draft created
+        matcher: matchesValue(business_event, "claim.draft_created")
+        bizevent:
+          eventProvider:
+            type: constant
+            constant: dcs.carer-portal
+          eventType:
+            type: constant
+            constant: claim.draft_created
+          fieldExtraction:
+            type: includeAll
+      - id: processor_gov_demo_claim_eligibility_checked
+        type: bizevent
+        enabled: true
+        description: Eligibility checked
+        matcher: matchesValue(business_event, "claim.eligibility_checked")
+        bizevent:
+          eventProvider:
+            type: constant
+            constant: dcs.carer-portal
+          eventType:
+            type: constant
+            constant: claim.eligibility_checked
+          fieldExtraction:
+            type: includeAll
+      - id: processor_gov_demo_claim_document_uploaded
+        type: bizevent
+        enabled: true
+        description: Document uploaded
+        matcher: matchesValue(business_event, "claim.document_uploaded")
+        bizevent:
+          eventProvider:
+            type: constant
+            constant: dcs.carer-portal
+          eventType:
+            type: constant
+            constant: claim.document_uploaded
+          fieldExtraction:
+            type: includeAll
+      - id: processor_gov_demo_claim_submitted
+        type: bizevent
+        enabled: true
+        description: Claim submitted
+        matcher: matchesValue(business_event, "claim.submitted")
+        bizevent:
+          eventProvider:
+            type: constant
+            constant: dcs.carer-portal
+          eventType:
+            type: constant
+            constant: claim.submitted
+          fieldExtraction:
+            type: includeAll
+      - id: processor_gov_demo_claim_payment_posted
+        type: bizevent
+        enabled: true
+        description: Payment posted
+        matcher: matchesValue(business_event, "claim.payment_posted")
+        bizevent:
+          eventProvider:
+            type: constant
+            constant: dcs.carer-portal
+          eventType:
+            type: constant
+            constant: claim.payment_posted
+          fieldExtraction:
+            type: includeAll
+      - id: processor_gov_demo_claim_payment_failed
+        type: bizevent
+        enabled: true
+        description: Payment failed
+        matcher: matchesValue(business_event, "claim.payment_failed")
+        bizevent:
+          eventProvider:
+            type: constant
+            constant: dcs.carer-portal
+          eventType:
+            type: constant
+            constant: claim.payment_failed
+          fieldExtraction:
+            type: includeAll
