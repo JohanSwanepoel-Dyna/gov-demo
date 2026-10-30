@@ -423,7 +423,7 @@ The stack runs continuously with load, so growth must be bounded:
 |---|---|
 | SLOs | Claim submission availability and latency, assistant latency |
 | OpenPipeline rules | Mask TFN and Medicare patterns in logs and span attributes |
-| Davis anomaly detection tuning | Ensure peak scenario raises a problem in demo timeframe Decision: not tuned (see docs/dynatrace-config.md section 8), the SLOs carry the burn story |
+| Davis anomaly detection tuning | Ensure peak scenario raises a problem in demo timeframe. Decision: not tuned (see docs/dynatrace-config.md section 8), the SLOs carry the burn story |
 | Dashboard or Notebook | Citizen journey, queue depth, AI usage and cost |
 | RUM application and funnel | Steps 1 to 5 |
 | Tokens | Scopes for OTLP ingest, metrics ingest, logs ingest, business events ingest, events ingest. Confirm exact scope names in current documentation |
