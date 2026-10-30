@@ -11,7 +11,7 @@ What the demo needs in the Dynatrace tenant, and its status. The lab tenant is S
 | 3 | OpenPipeline logs pipeline and routing entry | Business events and the deployment event from logs | Applied and verified |
 | 4 | OneAgent Python sensors | Leave disabled | As found |
 | 5 | RUM application and funnel | Browser sessions, funnel at the upload step | Auto-created, funnel verified |
-| 6 | Masking rule for TFN and Medicare | Show masking in logs and prompts | Not built, proposal below |
+| 6 | Masking rule for TFN and Medicare | Show masking in logs and prompts | Logs applied and verified. Span pipeline created, routing not applied yet (needs your go-ahead) |
 | 7 | SLOs | Claim submission and assistant | Not built, proposals below |
 | 8 | Davis anomaly detection tuning | A clean problem for the peak scenario | Not done |
 | 9 | Dashboard | Journey, payments, AI usage and cost, RUM funnel, change | Built, see section 9 |
@@ -91,11 +91,31 @@ Define the funnel in the RUM application on the seven views. Session Replay was 
 
 Frontend to backend linking works with the OpenTelemetry services: browser requests carry W3C trace context and the same trace id continues through `web` into claims-api.
 
-## 6. Masking rule (not built)
+## 6. Masking TFN and Medicare
 
-The `ai_pii` scenario writes TFN and Medicare numbers in clear into claims-api log lines (`"tfn": "..."`, `"medicare_number": "..."`) and records prompts with a TFN into `gen_ai.input.messages`. Masking is meant to be shown with OpenPipeline, not application code.
+The `ai_pii` scenario writes TFN and Medicare numbers in clear into claims-api log lines (`"tfn": "..."`, `"medicare_number": "..."`) and records prompts containing a TFN into `gen_ai.input.messages`. Masking happens in OpenPipeline at ingest, not in application code.
 
-Proposal, untested: add a DQL processor to the processing stage of the logs pipeline that replaces nine and ten digit numbers in `content` and in the parsed fields, and add the same masking for span attributes in the spans pipeline. Check the available DQL string functions in the current documentation before writing it, and test on `ai_pii` data: the sign-in log line and the prompt with TFN `123456782` are the two things to see masked.
+How: a DQL processor using `replacePattern` with DPL patterns anchored on a label, so only the digits are replaced and the rest of the line is untouched:
+
+| Pattern (DPL) | Masks |
+|---|---|
+| `<<'"tfn": "' DIGIT{9}` | the `tfn` field of a log line |
+| `<<'"medicare_number": "' DIGIT{10}` | the `medicare_number` field |
+| `<<('TFN is ' \| 'TFN: ' \| 'TFN ' \| 'tfn is ' \| 'tfn ') DIGIT{9}` | free text such as "My TFN is 123456782" |
+| `DIGIT{3} ' ' DIGIT{3} ' ' DIGIT{3}` | a TFN written as 123 456 782 |
+
+Why anchored: a bare nine digit pattern was tested and rejected. It matched digits inside the hex `trace_id` (breaking trace correlation) and left the last digit of a ten digit Medicare number visible. Tested read-only with DQL on real data before it went into a pipeline. In the replacement the matched digits become `[masked]`.
+
+Logs (applied and verified): the masking processor is the first step of the `gov-demo business events` pipeline, so it runs before the parse step and before business events are extracted. The routing entry also sends lines containing `tfn` or `medicare_number` to that pipeline (sign-in lines have no `business_event`). Result with `ai_pii` on: 6 of 6 new log lines arrived with `"tfn": "[masked]"`, none in clear, all kept their `trace_id`, and the business events built from them carry the masked content (3 of 3). Check:
+```
+fetch logs, from: now()-30m
+| filter k8s.workload.name == "claims-api" and contains(content, "\"tfn\"")
+| summarize lines = count(), masked = countIf(contains(content, "\"tfn\": \"[masked]\"")), clear = countIf(not contains(content, "\"tfn\": \"[masked]\""))
+```
+
+Spans (prepared, not routed): the pipeline `pipeline_gov_demo_spans` (`docs/openpipeline/gov-demo-spans-pipeline.yaml`) exists in the tenant and masks `gen_ai.input.messages` and `gen_ai.output.messages`, but no spans routing exists, so it does nothing yet. Applying the routing (`docs/openpipeline/gov-demo-spans-routing.yaml`, after putting the pipeline objectId into it) creates a new shared spans routing object that did not exist before, so it was held back for an explicit go-ahead. After applying, check that a new chat span still has its `gen_ai.*` attributes and the service entity (so AI Observability keeps working), then that a prompt with a TFN reads `My TFN is [masked]`. The pattern itself was tested on a recorded prompt.
+
+Limits: only the labelled forms above are masked. "my tax file number is 123456782" or a bare number is not. Medicare is masked only in the labelled log field. Lines ingested before the rule keep their clear values until the bucket retention expires (this lab only holds synthetic data). Turn `log_pii` and prompt recording off (`make scenario NAME=baseline`) when you are not demonstrating.
 
 ## 7. SLOs (not built)
 

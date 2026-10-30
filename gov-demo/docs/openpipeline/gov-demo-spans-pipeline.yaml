@@ -1,0 +1,26 @@
+# OpenPipeline spans pipeline: masks a TFN in the recorded prompts and answers (gen_ai.input.messages and gen_ai.output.messages).
+# Tenant-side configuration, applied with dtctl. It only runs for spans routed to it, see docs/dynatrace-config.md.
+schemaId: builtin:openpipeline.spans.pipelines
+scope: environment
+value:
+  customId: pipeline_gov_demo_spans
+  displayName: gov-demo span masking
+  metadataList: []
+  processing:
+    processors:
+      - id: processor_gov_demo_mask_prompt
+        type: dql
+        enabled: true
+        description: Mask a TFN in the recorded prompt
+        matcher: isNotNull(`gen_ai.input.messages`)
+        dql:
+          script: |-
+            fieldsAdd `gen_ai.input.messages` = replacePattern(replacePattern(toString(`gen_ai.input.messages`), "<<('TFN is ' | 'TFN: ' | 'TFN ' | 'tfn is ' | 'tfn ') DIGIT{9}", "[masked]"), "DIGIT{3} ' ' DIGIT{3} ' ' DIGIT{3}", "[masked]")
+      - id: processor_gov_demo_mask_answer
+        type: dql
+        enabled: true
+        description: Mask a TFN in the recorded answer
+        matcher: isNotNull(`gen_ai.output.messages`)
+        dql:
+          script: |-
+            fieldsAdd `gen_ai.output.messages` = replacePattern(replacePattern(toString(`gen_ai.output.messages`), "<<('TFN is ' | 'TFN: ' | 'TFN ' | 'tfn is ' | 'tfn ') DIGIT{9}", "[masked]"), "DIGIT{3} ' ' DIGIT{3} ' ' DIGIT{3}", "[masked]")

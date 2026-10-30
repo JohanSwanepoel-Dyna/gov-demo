@@ -38,6 +38,14 @@ value:
     processors: []
   processing:
     processors:
+      - id: processor_gov_demo_mask_pii
+        type: dql
+        enabled: true
+        description: Mask TFN and Medicare numbers first (labelled values and "TFN is ..." text, anchored so trace ids are untouched)
+        matcher: matchesValue(k8s.namespace.name, "gov-demo")
+        dql:
+          script: |-
+            fieldsAdd content = replacePattern(replacePattern(replacePattern(replacePattern(content, "<<'\"tfn\": \"' DIGIT{9}", "[masked]"), "<<'\"medicare_number\": \"' DIGIT{10}", "[masked]"), "<<('TFN is ' | 'TFN: ' | 'TFN ' | 'tfn is ' | 'tfn ') DIGIT{9}", "[masked]"), "DIGIT{3} ' ' DIGIT{3} ' ' DIGIT{3}", "[masked]")
       - id: processor_gov_demo_parse_json
         type: dql
         enabled: true

@@ -1,0 +1,15 @@
+# Routing entry that sends the claims-api spans carrying recorded prompts or answers to the span masking pipeline.
+# NOT applied yet. Before applying, replace the pipelineId with the objectId of pipeline_gov_demo_spans:
+#   dtctl get settings --schema builtin:openpipeline.spans.pipelines -o json
+# The spans routing object is a shared tenant setting (it did not exist before), so apply it deliberately:
+#   dtctl apply -f docs/openpipeline/gov-demo-spans-routing.yaml
+# Roll back by deleting the routing entry (or the whole object) in Settings, OpenPipeline, Spans, Dynamic routing.
+schemaId: builtin:openpipeline.spans.routing
+scope: environment
+value:
+  routingEntries:
+    - description: gov-demo span masking
+      enabled: true
+      matcher: matchesValue(service.name, "claims-api") and (isNotNull(`gen_ai.input.messages`) or isNotNull(`gen_ai.output.messages`))
+      pipelineId: "<objectId of pipeline_gov_demo_spans>"
+      pipelineType: custom

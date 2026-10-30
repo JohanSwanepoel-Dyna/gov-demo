@@ -194,7 +194,7 @@ fetch spans, from: now()-30m
 | summarize n = count()
 ```
 
-Say: this is the setup for masking. The masking rule is not built, see `dynatrace-config.md`. After the demo run `make scenario NAME=baseline`.
+Masking: with the OpenPipeline rule in `dynatrace-config.md` (section 6) the log lines arrive as `"tfn": "[masked]"` and `"medicare_number": "[masked]"`. Compare with the pod log (`kubectl logs -n gov-demo deploy/claims-api -c claims-api --since=1m | grep '"tfn"'`) where the digits are still in clear: the app writes them, Dynatrace masks them at ingest. Prompts are masked the same way once the spans routing is applied, until then the prompt with the TFN is readable in the Prompts view. Lines ingested before the rule stay as they were. After the demo run `make scenario NAME=baseline`.
 
 ## ai_cost_spike: verbose answers
 
@@ -243,7 +243,7 @@ Not checked in the UI: the Errors tab of AI Observability.
 - The duration tile in AI Observability misreads the unit (the metric value is correct).
 - Guardrail activation card and by-type chart stay at 0.
 - Runtime vulnerability detection of the old log4j in the legacy stub has not been confirmed (spec item 6). Check Security, Vulnerabilities for `legacy-stub`.
-- Masking rule, SLOs and a dashboard are documented as tenant work but not built.
+- Masking of prompts on spans is prepared but the spans routing is not applied. SLOs are documented but not built.
 - Davis problems appear during the peak, but the root cause was not the legacy stub in the records checked.
 - Session Replay not verified.
 - Hallucination needs an evaluation path (spec item 1), not built.
