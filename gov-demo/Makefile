@@ -1,4 +1,4 @@
-.PHONY: up down seed logs ps scenario browser-load secrets-init secrets-check images k8s-secrets k8s-render k8s-dry-run k8s-up k8s-down disk prune
+.PHONY: up down seed logs ps scenario browser-load secrets-init secrets-check images k8s-secrets k8s-render k8s-dry-run k8s-up k8s-down disk prune deploy undeploy status
 
 up:
 	docker compose up -d --build --wait
@@ -71,3 +71,16 @@ disk:
 prune:
 	docker builder prune -f --filter until=24h
 	docker image prune -f
+
+# One command deploy to the current kubectl context, see docs/deploy.md.
+#   make deploy                                        local cluster (Rancher Desktop, Docker Desktop, OrbStack, Colima)
+#   make deploy REGISTRY=ghcr.io/you/gov-demo TAG=v1   any other cluster (builds amd64 and arm64 and pushes)
+#   make deploy DRYRUN=yes                             preflight and plan only, changes nothing on the cluster
+deploy:
+	@scripts/deploy.sh $(if $(REGISTRY),--registry $(REGISTRY)) $(if $(TAG),--tag $(TAG)) $(if $(YES),--yes) $(if $(DRYRUN),--dry-run)
+
+undeploy:
+	@printf 'Delete namespace gov-demo on context "%s"? [y/N] ' "$$(kubectl config current-context)"; read a; [ "$$a" = y ] && kubectl delete namespace gov-demo
+
+status:
+	@kubectl get pods,svc,cronjob -n gov-demo; echo; kubectl get dynakube -A 2>/dev/null || true

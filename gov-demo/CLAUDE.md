@@ -54,8 +54,16 @@ gov-demo/
     services.yaml         # one Deployment and Service per app service
     locust.yaml
     kustomization.yaml
+  scripts/
+    deploy.sh             # one command deploy to the current kubectl context (make deploy)
+    secrets.sh            # make secrets-init and secrets-check
+  secrets/                # gitignored values, committed *.example templates
   docs/
     runbook.md            # demo script per scenario
+    deploy.md             # deploy to your cluster, local or through a registry
     dynatrace-config.md   # checklist for tenant-side configuration
+    openpipeline/         # pipelines and routing for business events, deployment event and masking
+    slos/                 # one SLO definition per file
+    dashboards/           # dashboard generator and the generated JSON
 ```
 

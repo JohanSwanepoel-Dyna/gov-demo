@@ -1,4 +1,8 @@
-"""Seed 500 synthetic citizens and write a credentials CSV. Idempotent."""
+"""Seed 500 synthetic citizens and write a credentials CSV. Idempotent.
+
+  python seed.py                      seed the database (DATABASE_URL) and write the CSV
+  python seed.py --csv-only [--out F] write only the credentials CSV, no database needed (same numbers every time)
+"""
 import csv
 import hashlib
 import os
@@ -7,11 +11,9 @@ import sys
 import time
 from datetime import date, timedelta
 
-import psycopg
-
 COUNT = int(os.environ.get("SEED_COUNT", "500"))
 OUT = os.environ.get("CREDENTIALS_CSV", "/out/credentials.csv")
-DSN = os.environ["DATABASE_URL"]
+DSN = os.environ.get("DATABASE_URL")
 
 FIRST = ["Alex", "Sam", "Jordan", "Taylor", "Morgan", "Casey", "Riley", "Jamie", "Avery", "Quinn",
          "Noor", "Priya", "Mei", "Tane", "Aroha", "Luca", "Sofia", "Omar", "Layla", "Kofi"]
@@ -43,6 +45,9 @@ def make_medicare(rng):
 
 
 def connect():
+    import psycopg  # only needed when seeding the database
+    if not DSN:
+        sys.exit("DATABASE_URL is not set")
     for attempt in range(30):
         try:
             return psycopg.connect(DSN)
@@ -50,6 +55,15 @@ def connect():
             print(f"waiting for postgres ({attempt + 1}/30)")
             time.sleep(2)
     sys.exit("postgres not reachable")
+
+
+def write_csv(creds):
+    os.makedirs(os.path.dirname(OUT) or ".", exist_ok=True)
+    with open(OUT, "w", newline="") as f:
+        w = csv.writer(f, lineterminator="\n")
+        w.writerow(["citizen_id", "passcode"])
+        w.writerows(creds)
+    print(f"wrote {OUT}")
 
 
 def main():
@@ -65,6 +79,13 @@ def main():
                      hashlib.sha256(passcode.encode()).hexdigest()))
         creds.append((cid, passcode))
 
+    if "--out" in sys.argv:
+        global OUT
+        OUT = sys.argv[sys.argv.index("--out") + 1]
+    if "--csv-only" in sys.argv:
+        write_csv(creds)
+        return
+
     with connect() as conn:
         if conn.execute("SELECT to_regclass('citizens')").fetchone()[0] is None:
             conn.execute(open(os.path.join(os.path.dirname(__file__), "schema.sql")).read())
@@ -79,12 +100,7 @@ def main():
         else:
             sys.exit(f"citizens has {n} rows, expected 0 or {COUNT}. Reset the volume.")
 
-    os.makedirs(os.path.dirname(OUT), exist_ok=True)
-    with open(OUT, "w", newline="") as f:
-        w = csv.writer(f, lineterminator="\n")
-        w.writerow(["citizen_id", "passcode"])
-        w.writerows(creds)
-    print(f"wrote {OUT}")
+    write_csv(creds)
 
 
 if __name__ == "__main__":

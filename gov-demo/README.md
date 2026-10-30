@@ -13,6 +13,10 @@ make down
 
 Credentials for load tools are written to `db/out/credentials.csv` by the seed step (`make seed` re-runs it).
 
+## Deploy to Kubernetes
+
+`make deploy` deploys the whole demo to the cluster your `kubectl` points at (preflight, local files, images, namespace and secrets, apply, wait). Local clusters such as Rancher Desktop use your own Docker images, any other cluster uses `make deploy REGISTRY=ghcr.io/you/gov-demo`. `make deploy DRYRUN=yes` shows the plan first, `make status` and `make undeploy` finish the job. Details, the Dynatrace side and troubleshooting are in `docs/deploy.md`.
+
 Ports: web 8080, claims-api 8000, llm-gateway 8100, payment-worker 8200, legacy-stub 8300, locust 8089.
 
 ## Environment variables (root `.env`)
