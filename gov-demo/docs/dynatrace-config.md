@@ -14,7 +14,7 @@ What the demo needs in the Dynatrace tenant, and its status. The lab tenant is S
 | 6 | Masking rule for TFN and Medicare | Show masking in logs and prompts | Not built, proposal below |
 | 7 | SLOs | Claim submission and assistant | Not built, proposals below |
 | 8 | Davis anomaly detection tuning | A clean problem for the peak scenario | Not done |
-| 9 | Dashboard or notebook | Journey, queue, AI usage and cost | Not built, tiles proposed below |
+| 9 | Dashboard | Journey, payments, AI usage and cost, RUM funnel, change | Built, see section 9 |
 | 10 | Vulnerability detection of the old log4j | Security story | Not confirmed |
 
 ## 1. DynaKube
@@ -110,9 +110,18 @@ Proposed definitions, to be created in the tenant:
 
 Not tuned. During the lab peak runs Davis opened 9 problems on the demo services in 6 hours, mainly "Response time degradation" plus one "Failure rate increase". The root cause shown was `web` or empty, not the legacy stub. If the demo story needs "Davis points at the legacy tier", tune the detection on the legacy service and check a live problem first.
 
-## 9. Dashboard or notebook (not built)
+## 9. Dashboard
 
-Tiles that already have working queries: journey events by type, abandonment, payment failures by error, token usage by token type, guardrail and blocked counts, RUM sessions per view, deployment events. The queries are in `runbook.md`. Queue depth is not available in the tenant (read the `payment_queue` table), expose it as a metric if a tile is wanted.
+Built: "Carer Support Portal demo" (id `fff6ca52-9dac-495c-91db-2f02b18cc977`, owner is the account that applied it), https://imb05402.apps.dynatrace.com/ui/apps/dynatrace.dashboards/dashboard/fff6ca52-9dac-495c-91db-2f02b18cc977. 22 tiles, 18 of them data tiles, all queries checked against the tenant before applying.
+
+- Headline numbers: claims submitted, payments posted, payments failed, average queue wait, tokens used, prompts blocked by guardrails.
+- Claims and payments: journey events by step, claims over time (paid in the good colour, failed in the critical colour), payment queue wait (average and p95), failed payments by error, server response time p95 by service.
+- AI assistant: tokens by type, chat completion latency (p50 and p95), guardrail outcome per chat, chat errors by type.
+- Experience and change: RUM funnel (sessions per step), deployment events, Davis problems on the demo services.
+
+The tiles follow the dashboard timeframe (they carry no timeframe of their own), so pick the window with the selector, for example the last 2 hours. Not on the dashboard: queue depth (it lives in the `payment_queue` table, not in the tenant) and Locust's own request rate.
+
+The dashboard is defined in code: `docs/dashboards/build_dashboard.py` writes `docs/dashboards/gov-demo.json`. `python3 docs/dashboards/build_dashboard.py --check` runs every tile query once against the tenant (one `dtctl` call at a time). `dtctl apply -f docs/dashboards/gov-demo.json` updates the dashboard in place, because the file carries its id. Not checked: how the tiles look in the browser, the layout and colours were built from the structure of an existing dashboard but not seen rendered.
 
 ## 10. Security
 

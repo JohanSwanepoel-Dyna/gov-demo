@@ -1,0 +1,608 @@
+{
+ "id": "fff6ca52-9dac-495c-91db-2f02b18cc977",
+ "name": "Carer Support Portal demo",
+ "type": "dashboard",
+ "content": {
+  "version": 21,
+  "variables": [],
+  "tiles": {
+   "0": {
+    "type": "markdown",
+    "content": "# Carer Support Portal (fictional demonstration)\nDepartment of Community Services demo. All policy, amounts and citizens are invented. Run scenarios with `make scenario NAME=...`, see `docs/runbook.md`."
+   },
+   "1": {
+    "title": "Claims submitted",
+    "type": "data",
+    "query": "fetch bizevents\n| filter event.provider == \"dcs.carer-portal\"\n| filter event.type == \"claim.submitted\"\n| summarize submitted = count()",
+    "visualization": "singleValue",
+    "visualizationSettings": {
+     "autoSelectVisualization": false,
+     "singleValue": {
+      "label": "Submitted",
+      "recordField": "submitted"
+     }
+    },
+    "querySettings": {
+     "maxResultRecords": 1000,
+     "defaultScanLimitGbytes": 500,
+     "maxResultMegaBytes": 100,
+     "defaultSamplingRatio": 10,
+     "enableSampling": false
+    }
+   },
+   "2": {
+    "title": "Payments posted",
+    "type": "data",
+    "query": "fetch bizevents\n| filter event.provider == \"dcs.carer-portal\"\n| filter event.type == \"claim.payment_posted\"\n| summarize posted = count()",
+    "visualization": "singleValue",
+    "visualizationSettings": {
+     "autoSelectVisualization": false,
+     "singleValue": {
+      "label": "Paid",
+      "recordField": "posted"
+     }
+    },
+    "querySettings": {
+     "maxResultRecords": 1000,
+     "defaultScanLimitGbytes": 500,
+     "maxResultMegaBytes": 100,
+     "defaultSamplingRatio": 10,
+     "enableSampling": false
+    }
+   },
+   "3": {
+    "title": "Payments failed",
+    "type": "data",
+    "query": "fetch bizevents\n| filter event.provider == \"dcs.carer-portal\"\n| filter event.type == \"claim.payment_failed\"\n| summarize failed = count()",
+    "visualization": "singleValue",
+    "visualizationSettings": {
+     "autoSelectVisualization": false,
+     "singleValue": {
+      "label": "Failed",
+      "recordField": "failed"
+     }
+    },
+    "querySettings": {
+     "maxResultRecords": 1000,
+     "defaultScanLimitGbytes": 500,
+     "maxResultMegaBytes": 100,
+     "defaultSamplingRatio": 10,
+     "enableSampling": false
+    }
+   },
+   "4": {
+    "title": "Average queue wait (ms)",
+    "type": "data",
+    "query": "fetch bizevents\n| filter event.provider == \"dcs.carer-portal\"\n| filter event.type == \"claim.payment_posted\"\n| summarize wait = avg(queue_wait_ms)",
+    "visualization": "singleValue",
+    "visualizationSettings": {
+     "autoSelectVisualization": false,
+     "singleValue": {
+      "label": "Queue wait ms",
+      "recordField": "wait"
+     }
+    },
+    "querySettings": {
+     "maxResultRecords": 1000,
+     "defaultScanLimitGbytes": 500,
+     "maxResultMegaBytes": 100,
+     "defaultSamplingRatio": 10,
+     "enableSampling": false
+    }
+   },
+   "5": {
+    "title": "Tokens used",
+    "type": "data",
+    "query": "timeseries tokens = sum(gen_ai.client.token.usage)\n| fieldsAdd total = arraySum(tokens)\n| fields total",
+    "visualization": "singleValue",
+    "visualizationSettings": {
+     "autoSelectVisualization": false,
+     "singleValue": {
+      "label": "Tokens",
+      "recordField": "total"
+     }
+    },
+    "querySettings": {
+     "maxResultRecords": 1000,
+     "defaultScanLimitGbytes": 500,
+     "maxResultMegaBytes": 100,
+     "defaultSamplingRatio": 10,
+     "enableSampling": false
+    }
+   },
+   "6": {
+    "title": "Prompts blocked by guardrails",
+    "type": "data",
+    "query": "fetch spans\n| filter service.name == \"claims-api\" and startsWith(toString(span.name), \"chat \")\n| summarize blocked = countIf(matchesPhrase(toString(gen_ai.response.finish_reasons), \"content_filter\"))",
+    "visualization": "singleValue",
+    "visualizationSettings": {
+     "autoSelectVisualization": false,
+     "singleValue": {
+      "label": "Blocked",
+      "recordField": "blocked"
+     }
+    },
+    "querySettings": {
+     "maxResultRecords": 1000,
+     "defaultScanLimitGbytes": 500,
+     "maxResultMegaBytes": 100,
+     "defaultSamplingRatio": 10,
+     "enableSampling": false
+    }
+   },
+   "7": {
+    "type": "markdown",
+    "content": "## Claims and payments"
+   },
+   "8": {
+    "title": "Claim journey, events by step",
+    "type": "data",
+    "query": "fetch bizevents\n| filter event.provider == \"dcs.carer-portal\"\n| summarize events = count(), by: {event.type}\n| sort events desc",
+    "visualization": "categoricalBarChart",
+    "visualizationSettings": {
+     "autoSelectVisualization": false,
+     "chartSettings": {
+      "legend": {
+       "position": "bottom"
+      }
+     },
+     "coloring": {
+      "colorRules": [
+       {
+        "colorMode": "color-palette",
+        "colorPalette": "purple-rain",
+        "comparator": "= *value*",
+        "field": "DT.name",
+        "type": "string",
+        "value": ""
+       }
+      ]
+     }
+    },
+    "querySettings": {
+     "maxResultRecords": 1000,
+     "defaultScanLimitGbytes": 500,
+     "maxResultMegaBytes": 100,
+     "defaultSamplingRatio": 10,
+     "enableSampling": false
+    }
+   },
+   "9": {
+    "title": "Claims over time",
+    "type": "data",
+    "query": "fetch bizevents\n| filter event.provider == \"dcs.carer-portal\"\n| filter in(event.type, \"claim.submitted\", \"claim.payment_posted\", \"claim.payment_failed\")\n| makeTimeseries events = count(), by: {event.type}",
+    "visualization": "lineChart",
+    "visualizationSettings": {
+     "autoSelectVisualization": false,
+     "chartSettings": {
+      "legend": {
+       "position": "bottom"
+      }
+     },
+     "coloring": {
+      "colorRules": [
+       {
+        "field": "DT.name",
+        "type": "string",
+        "comparator": "= *value*",
+        "value": "claim.payment_posted",
+        "colorMode": "single-color",
+        "color": "var(--dt-colors-charts-apdex-good-default, #1c520a)"
+       },
+       {
+        "field": "DT.name",
+        "type": "string",
+        "comparator": "= *value*",
+        "value": "claim.payment_failed",
+        "colorMode": "single-color",
+        "color": "var(--dt-colors-charts-loglevel-emergency-default, #ae132d)"
+       }
+      ]
+     }
+    },
+    "querySettings": {
+     "maxResultRecords": 1000,
+     "defaultScanLimitGbytes": 500,
+     "maxResultMegaBytes": 100,
+     "defaultSamplingRatio": 10,
+     "enableSampling": false
+    }
+   },
+   "10": {
+    "title": "Payment queue wait (ms)",
+    "type": "data",
+    "query": "fetch bizevents\n| filter event.provider == \"dcs.carer-portal\"\n| filter event.type == \"claim.payment_posted\"\n| makeTimeseries average = avg(queue_wait_ms), p95 = percentile(queue_wait_ms, 95)",
+    "visualization": "lineChart",
+    "visualizationSettings": {
+     "autoSelectVisualization": false,
+     "chartSettings": {
+      "legend": {
+       "position": "bottom"
+      }
+     }
+    },
+    "querySettings": {
+     "maxResultRecords": 1000,
+     "defaultScanLimitGbytes": 500,
+     "maxResultMegaBytes": 100,
+     "defaultSamplingRatio": 10,
+     "enableSampling": false
+    }
+   },
+   "11": {
+    "title": "Failed payments by error",
+    "type": "data",
+    "query": "fetch bizevents\n| filter event.provider == \"dcs.carer-portal\"\n| filter event.type == \"claim.payment_failed\"\n| summarize failed = count(), by: {error}",
+    "visualization": "categoricalBarChart",
+    "visualizationSettings": {
+     "autoSelectVisualization": false,
+     "chartSettings": {
+      "legend": {
+       "position": "bottom"
+      }
+     },
+     "coloring": {
+      "colorRules": [
+       {
+        "colorMode": "color-palette",
+        "colorPalette": "fireplace",
+        "comparator": "= *value*",
+        "field": "DT.name",
+        "type": "string",
+        "value": ""
+       }
+      ]
+     }
+    },
+    "querySettings": {
+     "maxResultRecords": 1000,
+     "defaultScanLimitGbytes": 500,
+     "maxResultMegaBytes": 100,
+     "defaultSamplingRatio": 10,
+     "enableSampling": false
+    }
+   },
+   "12": {
+    "title": "Server response time p95 by service",
+    "type": "data",
+    "query": "fetch spans\n| filter k8s.namespace.name == \"gov-demo\" and span.kind == \"server\"\n| makeTimeseries p95 = percentile(duration, 95), by: {dt.service.name}",
+    "visualization": "lineChart",
+    "visualizationSettings": {
+     "autoSelectVisualization": false,
+     "chartSettings": {
+      "legend": {
+       "position": "bottom"
+      }
+     }
+    },
+    "querySettings": {
+     "maxResultRecords": 1000,
+     "defaultScanLimitGbytes": 500,
+     "maxResultMegaBytes": 100,
+     "defaultSamplingRatio": 10,
+     "enableSampling": false
+    }
+   },
+   "13": {
+    "type": "markdown",
+    "content": "## AI assistant"
+   },
+   "14": {
+    "title": "Tokens by type",
+    "type": "data",
+    "query": "timeseries tokens = sum(gen_ai.client.token.usage), by: {gen_ai.token.type}",
+    "visualization": "areaChart",
+    "visualizationSettings": {
+     "autoSelectVisualization": false,
+     "chartSettings": {
+      "legend": {
+       "position": "bottom"
+      }
+     }
+    },
+    "querySettings": {
+     "maxResultRecords": 1000,
+     "defaultScanLimitGbytes": 500,
+     "maxResultMegaBytes": 100,
+     "defaultSamplingRatio": 10,
+     "enableSampling": false
+    }
+   },
+   "15": {
+    "title": "Chat completion latency",
+    "type": "data",
+    "query": "fetch spans\n| filter service.name == \"claims-api\" and startsWith(toString(span.name), \"chat \")\n| makeTimeseries p50 = percentile(duration, 50), p95 = percentile(duration, 95)",
+    "visualization": "lineChart",
+    "visualizationSettings": {
+     "autoSelectVisualization": false,
+     "chartSettings": {
+      "legend": {
+       "position": "bottom"
+      }
+     }
+    },
+    "querySettings": {
+     "maxResultRecords": 1000,
+     "defaultScanLimitGbytes": 500,
+     "maxResultMegaBytes": 100,
+     "defaultSamplingRatio": 10,
+     "enableSampling": false
+    }
+   },
+   "16": {
+    "title": "Guardrail outcome per chat",
+    "type": "data",
+    "query": "fetch spans\n| filter service.name == \"claims-api\" and startsWith(toString(span.name), \"chat \")\n| fieldsAdd outcome = if(matchesPhrase(toString(gen_ai.response.finish_reasons), \"content_filter\"), \"blocked\", else: \"allowed\")\n| summarize chats = count(), by: {outcome}",
+    "visualization": "categoricalBarChart",
+    "visualizationSettings": {
+     "autoSelectVisualization": false,
+     "chartSettings": {
+      "legend": {
+       "position": "bottom"
+      }
+     },
+     "coloring": {
+      "colorRules": [
+       {
+        "colorMode": "color-palette",
+        "colorPalette": "purple-rain",
+        "comparator": "= *value*",
+        "field": "DT.name",
+        "type": "string",
+        "value": ""
+       }
+      ]
+     }
+    },
+    "querySettings": {
+     "maxResultRecords": 1000,
+     "defaultScanLimitGbytes": 500,
+     "maxResultMegaBytes": 100,
+     "defaultSamplingRatio": 10,
+     "enableSampling": false
+    }
+   },
+   "17": {
+    "title": "Chat errors by type",
+    "type": "data",
+    "query": "fetch spans\n| filter service.name == \"claims-api\" and startsWith(toString(span.name), \"chat \")\n| filter isNotNull(error.type)\n| summarize failed = count(), by: {error.type}",
+    "visualization": "categoricalBarChart",
+    "visualizationSettings": {
+     "autoSelectVisualization": false,
+     "chartSettings": {
+      "legend": {
+       "position": "bottom"
+      }
+     },
+     "coloring": {
+      "colorRules": [
+       {
+        "colorMode": "color-palette",
+        "colorPalette": "fireplace",
+        "comparator": "= *value*",
+        "field": "DT.name",
+        "type": "string",
+        "value": ""
+       }
+      ]
+     }
+    },
+    "querySettings": {
+     "maxResultRecords": 1000,
+     "defaultScanLimitGbytes": 500,
+     "maxResultMegaBytes": 100,
+     "defaultSamplingRatio": 10,
+     "enableSampling": false
+    }
+   },
+   "18": {
+    "type": "markdown",
+    "content": "## Experience and change"
+   },
+   "19": {
+    "title": "RUM funnel, sessions per step",
+    "type": "data",
+    "query": "fetch user.events\n| filter dt.rum.application.entity == \"APPLICATION-EA7C4B59F27D43EB\" and characteristics.has_view_summary == true\n| summarize sessions = countDistinct(dt.rum.session.id), by: {view.detected_name}\n| sort sessions desc",
+    "visualization": "categoricalBarChart",
+    "visualizationSettings": {
+     "autoSelectVisualization": false,
+     "chartSettings": {
+      "legend": {
+       "position": "bottom"
+      }
+     },
+     "coloring": {
+      "colorRules": [
+       {
+        "colorMode": "color-palette",
+        "colorPalette": "purple-rain",
+        "comparator": "= *value*",
+        "field": "DT.name",
+        "type": "string",
+        "value": ""
+       }
+      ]
+     }
+    },
+    "querySettings": {
+     "maxResultRecords": 1000,
+     "defaultScanLimitGbytes": 500,
+     "maxResultMegaBytes": 100,
+     "defaultSamplingRatio": 10,
+     "enableSampling": false
+    }
+   },
+   "20": {
+    "title": "Deployment events",
+    "type": "data",
+    "query": "fetch events\n| filter event.type == \"CUSTOM_DEPLOYMENT\"\n| fields timestamp, event.name, event.description\n| sort timestamp desc\n| limit 10",
+    "visualization": "table",
+    "visualizationSettings": {
+     "autoSelectVisualization": false,
+     "table": {}
+    },
+    "querySettings": {
+     "maxResultRecords": 1000,
+     "defaultScanLimitGbytes": 500,
+     "maxResultMegaBytes": 100,
+     "defaultSamplingRatio": 10,
+     "enableSampling": false
+    }
+   },
+   "21": {
+    "title": "Problems on the demo services",
+    "type": "data",
+    "query": "fetch dt.davis.problems\n| filter contains(toString(affected_entity_ids), \"SERVICE-A07B249CEC01B91E\") or contains(toString(affected_entity_ids), \"SERVICE-F5D773513E6C7E59\") or contains(toString(affected_entity_ids), \"SERVICE-B5B342815508E1EE\") or contains(toString(affected_entity_ids), \"SERVICE-197A36756FADC0DA\") or contains(toString(affected_entity_ids), \"SERVICE-4896FBFBEE918D79\")\n| fields timestamp, display_id, event.name, event.status\n| sort timestamp desc\n| limit 10",
+    "visualization": "table",
+    "visualizationSettings": {
+     "autoSelectVisualization": false,
+     "table": {}
+    },
+    "querySettings": {
+     "maxResultRecords": 1000,
+     "defaultScanLimitGbytes": 500,
+     "maxResultMegaBytes": 100,
+     "defaultSamplingRatio": 10,
+     "enableSampling": false
+    }
+   }
+  },
+  "layouts": {
+   "0": {
+    "x": 0,
+    "y": 0,
+    "w": 24,
+    "h": 2
+   },
+   "1": {
+    "x": 0,
+    "y": 2,
+    "w": 4,
+    "h": 4
+   },
+   "2": {
+    "x": 4,
+    "y": 2,
+    "w": 4,
+    "h": 4
+   },
+   "3": {
+    "x": 8,
+    "y": 2,
+    "w": 4,
+    "h": 4
+   },
+   "4": {
+    "x": 12,
+    "y": 2,
+    "w": 4,
+    "h": 4
+   },
+   "5": {
+    "x": 16,
+    "y": 2,
+    "w": 4,
+    "h": 4
+   },
+   "6": {
+    "x": 20,
+    "y": 2,
+    "w": 4,
+    "h": 4
+   },
+   "7": {
+    "x": 0,
+    "y": 6,
+    "w": 24,
+    "h": 1
+   },
+   "8": {
+    "x": 0,
+    "y": 7,
+    "w": 8,
+    "h": 7
+   },
+   "9": {
+    "x": 8,
+    "y": 7,
+    "w": 16,
+    "h": 7
+   },
+   "10": {
+    "x": 0,
+    "y": 14,
+    "w": 10,
+    "h": 7
+   },
+   "11": {
+    "x": 10,
+    "y": 14,
+    "w": 6,
+    "h": 7
+   },
+   "12": {
+    "x": 16,
+    "y": 14,
+    "w": 8,
+    "h": 7
+   },
+   "13": {
+    "x": 0,
+    "y": 21,
+    "w": 24,
+    "h": 1
+   },
+   "14": {
+    "x": 0,
+    "y": 22,
+    "w": 8,
+    "h": 7
+   },
+   "15": {
+    "x": 8,
+    "y": 22,
+    "w": 8,
+    "h": 7
+   },
+   "16": {
+    "x": 16,
+    "y": 22,
+    "w": 4,
+    "h": 7
+   },
+   "17": {
+    "x": 20,
+    "y": 22,
+    "w": 4,
+    "h": 7
+   },
+   "18": {
+    "x": 0,
+    "y": 29,
+    "w": 24,
+    "h": 1
+   },
+   "19": {
+    "x": 0,
+    "y": 30,
+    "w": 8,
+    "h": 7
+   },
+   "20": {
+    "x": 8,
+    "y": 30,
+    "w": 8,
+    "h": 7
+   },
+   "21": {
+    "x": 16,
+    "y": 30,
+    "w": 8,
+    "h": 7
+   }
+  },
+  "annotations": [],
+  "settings": {},
+  "importedWithCode": false
+ }
+}

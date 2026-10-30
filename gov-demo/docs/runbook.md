@@ -11,8 +11,9 @@ Fictional agency, fictional policy, synthetic data. Lab use only.
 3. Pick the starting point: `make scenario NAME=baseline` (steady load, prompts not recorded) or `make scenario NAME=show_prompts` (same, and prompts are recorded so the AI Observability Prompts view fills).
 4. Portal: http://localhost:8080. Sign in with any pair from `gov-demo/db/out/credentials.csv` (columns `citizen_id,passcode`, for example citizen 1). Avoid ids divisible by 20, they are non-residents and always ineligible.
 5. Locust: http://localhost:8089 shows the standing load.
-6. Timing: data reaches the tenant 2 to 4 minutes after the action (logs a little later than spans). Open the views first, then act, then wait.
-7. If you query with `dtctl`, run one call at a time.
+6. Dashboard: open "Carer Support Portal demo" (https://imb05402.apps.dynatrace.com/ui/apps/dynatrace.dashboards/dashboard/fff6ca52-9dac-495c-91db-2f02b18cc977) and set the timeframe to the last 2 hours. It is the one screen for the whole story, see below.
+7. Timing: data reaches the tenant 2 to 4 minutes after the action (logs a little later than spans). Open the views first, then act, then wait.
+8. If you query with `dtctl`, run one call at a time.
 
 State you should know about: toggles live in memory. Restarting a pod returns that service to its defaults. `make scenario NAME=reset` also stops the load and turns prompt recording off, so afterwards run `baseline` or `show_prompts`.
 
@@ -33,6 +34,21 @@ State you should know about: toggles live in memory. Restarting a pod returns th
 | reset | `make scenario NAME=reset` | Nothing | Back to normal, no load | none |
 
 `scenarios/verify.sh` checks that every scenario changes behaviour within one request.
+
+## The dashboard
+
+Open it first and leave it on screen. What moves for each scenario (based on the queries behind the tiles, not yet watched live in the browser):
+
+| Scenario | Tiles that move |
+|---|---|
+| baseline | Journey by step, claims over time, tokens by type, chat latency, RUM funnel |
+| bad_release | Deployment events (new row), server response time p95 for claims-api, problems table |
+| monday_peak | Payments failed, claims over time (failed line), queue wait (average and p95), server response time p95 for the legacy stub, problems table |
+| upload_dropoff | RUM funnel (upload, review and status fall away) |
+| ai_injection, ai_pii | Prompts blocked (stays flat when guardrails are off), guardrail outcome per chat |
+| ai_cost_spike | Tokens used and tokens by type |
+| ai_hallucination | Nothing, that is the point: the answer is wrong but no metric changes (see the Prompts view) |
+| provider_outage | Chat errors by type, chat latency |
 
 ## Suggested ten minute story
 
