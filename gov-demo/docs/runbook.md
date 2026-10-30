@@ -1,0 +1,231 @@
+# Runbook: demo script
+
+How to run the Carer Support Portal demo and what to show in Dynatrace for each scenario. Everything here was run against the lab cluster. Where something was not verified, it says so.
+
+Fictional agency, fictional policy, synthetic data. Lab use only.
+
+## Before you start
+
+1. Cluster healthy: `kubectl get pods -n gov-demo` (all Running) and `kubectl get dynakube -n dynatrace` (Running).
+2. Port-forwards (they die on a reboot): `kubectl port-forward -n gov-demo svc/web 8080:8080` and `kubectl port-forward -n gov-demo svc/locust 8089:8089`.
+3. Pick the starting point: `make scenario NAME=baseline` (steady load, prompts not recorded) or `make scenario NAME=show_prompts` (same, and prompts are recorded so the AI Observability Prompts view fills).
+4. Portal: http://localhost:8080. Sign in with any pair from `gov-demo/db/out/credentials.csv` (columns `citizen_id,passcode`, for example citizen 1). Avoid ids divisible by 20, they are non-residents and always ineligible.
+5. Locust: http://localhost:8089 shows the standing load.
+6. Timing: data reaches the tenant 2 to 4 minutes after the action (logs a little later than spans). Open the views first, then act, then wait.
+7. If you query with `dtctl`, run one call at a time.
+
+State you should know about: toggles live in memory. Restarting a pod returns that service to its defaults. `make scenario NAME=reset` also stops the load and turns prompt recording off, so afterwards run `baseline` or `show_prompts`.
+
+## Cheat sheet
+
+| Scenario | Command | Do | Show | Wait |
+|---|---|---|---|---|
+| baseline | `make scenario NAME=baseline` | Run one claim | Trace across all services, business events, AI app | 3 min |
+| show_prompts | `make scenario NAME=show_prompts` | Click the chat chips | AI Observability, Prompts | 3 min |
+| bad_release | `make scenario NAME=bad_release` | Run claims as a citizen aged 45 to 54 | Deployment event, slower and failing eligibility | 2 min |
+| monday_peak | `make scenario NAME=monday_peak` | Watch Locust ramp to 60 users | Slow legacy tier, queue growth, failed payments, problems | 5 min |
+| upload_dropoff | `make scenario NAME=upload_dropoff` then `make browser-load PROFILE=abandoner SESSIONS=6` | Run completers and abandoners | RUM funnel, drop-off at upload | 3 min |
+| ai_injection | `make scenario NAME=ai_injection` | Click "Prompt injection" | Leak of another citizen's data | 3 min |
+| ai_pii | `make scenario NAME=ai_pii` | Click "Message with a TFN", sign in | TFN in prompts and TFN and Medicare in logs | 4 min |
+| ai_cost_spike | `make scenario NAME=ai_cost_spike` | Click "Long answer" | Token and cost jump | 3 min |
+| ai_hallucination | `make scenario NAME=ai_hallucination` | Click "Check my eligibility" | Wrong amount and an invented clause | 3 min |
+| provider_outage | `make scenario NAME=provider_outage` | Send a few chat prompts | 503 errors, error rate | 3 min |
+| reset | `make scenario NAME=reset` | Nothing | Back to normal, no load | none |
+
+`scenarios/verify.sh` checks that every scenario changes behaviour within one request.
+
+## Suggested ten minute story
+
+1. baseline: one claim, one trace (2 minutes).
+2. bad_release: the deployment event and the damage it causes (2 minutes).
+3. monday_peak: the legacy tier saturates and the queue grows (3 minutes).
+4. AI: show_prompts, then ai_injection and ai_pii (3 minutes).
+5. baseline to finish.
+
+Start the slow-to-appear scenarios early and talk while the data arrives.
+
+## baseline: one claim, one trace
+
+Run: `make scenario NAME=baseline`. In the portal, sign in and complete a claim (payment type, details with low income and 35 hours, upload `db/out/sample-document.txt`, submit). Watch the status reach "paid".
+
+Show:
+- Distributed Traces, search for the `POST /api/claims/{claim_id}/submit` trace. One trace crosses `web` (Node, OneAgent), `claims-api` and its database calls (OpenTelemetry), the payment queue handover, `payment-worker` (OpenTelemetry) and the Java legacy stub (OneAgent). The queue row carries the W3C trace context, so the worker continues the same trace.
+- Services, open `web`, Map tab: Government Claim Process (RUM) to `web` to `claims-api`, `llm-gateway`, the `govdemo` database, `LegacyController`, and `payment-worker` with `payment_queue`.
+- Business events (see queries below): draft, eligibility, document, submitted, payment posted, with amounts and queue wait.
+
+Say: Dynatrace's agent covers Node and Java, OpenTelemetry covers the Python services and the queue, and they join in one trace.
+
+Queries (Notebook):
+```
+fetch bizevents | filter event.provider == "dcs.carer-portal" | summarize n = count(), by: {event.type}
+```
+Abandonment (drafts that never reached submit):
+```
+fetch bizevents, from: now()-30m
+| filter event.provider == "dcs.carer-portal" and in(event.type, "claim.draft_created", "claim.submitted")
+| summarize drafts = countIf(event.type == "claim.draft_created"), submitted = countIf(event.type == "claim.submitted"), by: {claim_id}
+| filter submitted == 0
+```
+
+Caveats: the `web` spans are timestamped about 120 ms later than the claims-api spans below them (cause not found). OneAgent spans arrive before the OpenTelemetry spans, so a trace looks incomplete for the first minutes. The tenant has a second, unused RUM application called "Government Claims Process".
+
+## show_prompts: AI Observability
+
+Run: `make scenario NAME=show_prompts`. In the portal chat, click "Check my eligibility", then "30 hours a week", then "Low income". The chat works by clicking: after each reply the assistant offers the next options.
+
+Show, in AI Observability:
+- Explorer: `claims-api` as the AI app, the `claims-assistant` agent, the model `gpt-4o-mini`, tokens and cost (cost is calculated for the mock model name).
+- Prompts: the whole conversation including the tool call to `check_eligibility` and its result.
+- Guardrails: the guardrail activation count per app.
+- Conversation id: every span of one chat shares `gen_ai.conversation.id`.
+
+```
+fetch spans, from: now()-30m
+| filter gen_ai.conversation.id == "<id from a span>"
+| sort start_time asc
+| fields start_time, service.name, span.name, span.kind
+```
+
+Say: the model is a mock (spans carry `demo.mock=true`, provider `azure.ai.openai`, model `gpt-4o-mini`). The telemetry shape is what a real client would emit.
+
+Caveats: the "Overall guardrail activation" card and the activation-by-type chart stay at 0, they appear to read Bedrock-style attributes. The "Average request duration" tile showed 555.95 microseconds while the real value is 0.56 seconds (the metric value is correct, cause of the tile not found). Not checked: the Agents topology (Preview) page.
+
+## bad_release: deployment event and a bad eligibility engine
+
+Run: `make scenario NAME=bad_release`. Eligibility becomes 0.4 to 1.2 s slower, about 10 percent of checks fail, and citizens aged 45 to 54 get a wrong decision (ineligible with INCOME_TOO_HIGH). Citizen 4 is in that band. Run a claim as citizen 4 (see credentials.csv).
+
+Show:
+- A `CUSTOM_DEPLOYMENT` event named "eligibility-engine release v2_bad" on the claims-api service, 1 to 2 minutes after the switch. It comes from a log line turned into an event by OpenPipeline, no token involved.
+- Service claims-api: slower eligibility, errors.
+
+```
+fetch events, from: now()-30m | filter event.type == "CUSTOM_DEPLOYMENT"
+```
+
+Caveat: the deployment event was verified. Whether Davis opens a problem for this scenario and links it to the event was not checked. Switching back (`baseline`) logs a second event.
+
+## monday_peak: legacy tier saturates
+
+Run: `make scenario NAME=monday_peak`. The legacy stub is slow (2 to 5 s per call), the payment worker has one thread, and Locust ramps to 60 users over 3 minutes.
+
+Observed on the lab cluster: eligibility averages climb from about 130 ms to several seconds, the p95 reaches 4 to 12 s, failures settle around 1 to 5 percent, the payment queue grows from 0 to over 30 pending while almost nothing completes, and some payments fail after retries (the `claim.payment_failed` event, error "timed out"). The VM stays at about 26 percent CPU, the bottleneck is the stub by design. The stub does not restart: its health and control API run on a separate port.
+
+Show:
+- Services map for `web`: response time problems on `LegacyController` and downstream services.
+- Distributed Traces: slow eligibility traces dominated by the legacy call.
+- Business events: `claim.payment_failed` and `claim.payment_posted` with `queue_wait_ms` rising.
+- Queue depth (not in the tenant, read the table):
+```
+kubectl exec -n gov-demo deploy/postgres -c postgres -- sh -c "psql -U \$POSTGRES_USER -d \$POSTGRES_DB -c \"select status, count(*) from payment_queue group by 1\""
+```
+```
+fetch bizevents, from: now()-4h | filter event.type == "claim.payment_failed" | summarize n = count(), by: {error}
+```
+
+Finish with `make scenario NAME=baseline`. It works even while the stub is saturated and takes a couple of seconds. The queue then drains (the worker returns to two threads).
+
+Davis problems: during the lab runs Davis opened 9 problems on these services in 6 hours, mostly "Response time degradation" and one "Failure rate increase" (for example P-261047, still ACTIVE with root cause shown as `web`, others closed). Treat the root cause as unreliable for the story: in the records checked it was `web` or empty, not the legacy stub, so do not promise "Davis points at the legacy tier" without checking the live problem first. Tuning Davis so the peak raises a clean problem is still tenant work. The load profile returns to baseline by itself after the 10 minute hold and ramp down.
+
+## upload_dropoff: RUM funnel
+
+Run: `make scenario NAME=upload_dropoff` (uploads take 3 to 8 s), then real browser sessions: `make browser-load PROFILE=completer SESSIONS=6` and `make browser-load PROFILE=abandoner SESSIONS=6`. Abandoners reach the upload step and leave.
+
+Show, in the RUM application (Government Claim Process): views per step and the drop-off. Verified numbers from one run (12 sessions ingested): login, payment-type, details and eligibility 12, upload 8, review 5, status 5.
+
+```
+fetch user.events, from: now()-30m
+| filter dt.rum.application.entity == "APPLICATION-EA7C4B59F27D43EB" and characteristics.has_view_summary == true
+| summarize sessions = countDistinct(dt.rum.session.id), by: {view.detected_name}
+| sort sessions desc
+```
+
+Notes: each step is its own URL path (`/upload`, `/review`, ...), which is what makes the funnel possible (hash routes gave a single view). RUM's automatic actions also name every transition ("click on button on /upload"). The classic custom actions `step_*` are not stored by this tenant's RUM. Not verified: Session Replay (it may need enabling for the RUM application). The browser trace continues through `web` into the OpenTelemetry `claims-api`.
+
+## ai_injection: guardrails off, data leaks
+
+Run: `make scenario NAME=ai_injection`. In the chat click "Prompt injection". With guardrails off the assistant answers with another citizen's synthetic claim summary including a TFN. With guardrails on (baseline) the same prompt is blocked and flagged.
+
+Show:
+- Prompts view (needs `show_prompts` or `ai_pii` for recording): the injection prompt and the leaked answer. Compare with the blocked answer from baseline.
+- No filter annotations are returned when guardrails are off, so those requests stop counting as guardrail enabled.
+
+```
+fetch spans, from: now()-30m
+| filter service.name == "claims-api" and startsWith(toString(span.name), "chat ")
+| summarize chats = count(), blocked = countIf(matchesPhrase(toString(gen_ai.response.finish_reasons), "content_filter")), jailbreak = countIf(matchesPhrase(toString(gen_ai.prompt.prompt_filter_results), "\"jailbreak\": {\"filtered\": true"))
+```
+
+Say: the detection is the gateway's guardrail (a list of known injection phrases). Dynatrace does not detect injection itself, it shows the outcome the provider reports and, with prompt recording, the text. A reworded attack would slip past this mock.
+
+## ai_pii: identifiers in prompts and logs
+
+Run: `make scenario NAME=ai_pii` (this also records prompts and switches Locust to the assistant profile). In the chat click "Message with a TFN". Sign in again (the sign in log line carries the identifiers). The assistant answers politely and tells the user not to share a TFN, without echoing it.
+
+Show:
+- Prompts view and the chat span: the TFN `123456782` in `gen_ai.input.messages`.
+- Logs: claims-api sign in and eligibility log lines with `tfn`, `medicare_number` and `irn` in clear.
+
+```
+fetch logs, from: now()-30m
+| filter k8s.workload.name == "claims-api" and contains(content, "\"tfn\"") and contains(content, "medicare_number")
+| fields timestamp, content
+```
+```
+fetch spans, from: now()-30m
+| filter service.name == "claims-api" and startsWith(toString(span.name), "chat ") and matchesPhrase(toString(gen_ai.input.messages), "123456782")
+| summarize n = count()
+```
+
+Say: this is the setup for masking. The masking rule is not built, see `dynatrace-config.md`. After the demo run `make scenario NAME=baseline`.
+
+## ai_cost_spike: verbose answers
+
+Run: `make scenario NAME=ai_cost_spike`, click "Long answer" or any prompt a few times. Answers get long, output tokens jump.
+
+Show: AI Observability, token usage and cost over time; the metric by token type:
+```
+timeseries tokens = sum(gen_ai.client.token.usage), by: {gen_ai.token.type}, from: now()-30m
+```
+
+## ai_hallucination: wrong answers
+
+Run: `make scenario NAME=ai_hallucination`, click "Check my eligibility" (guided: pick hours and income) or "Quick check". The amount is 37 percent too high and the answer adds a non-existent clause (section 14B(2) of the Carer Support Act 2031). Guardrails are off here, because with guardrails on the grounding check blocks the wrong amount.
+
+Show: Prompts view, the answer next to the rules engine result in the tool call (the tool result holds the correct amount). Compare with `baseline`.
+
+Caveat: Dynatrace does not detect hallucination on its own. That needs an evaluation step (spec item 1), which is not built.
+
+## provider_outage: model provider errors
+
+Run: `make scenario NAME=provider_outage`. About 30 percent of chat requests fail with 503. Send several prompts in the chat (the widget shows "The assistant is unavailable right now") or let Locust's assistant users run (`ai_pii` or `ai_injection` first switch Locust to assistant load).
+
+Show: error rate on the `claims-api` AI app and the failed `chat` spans with `error.type` = 503.
+```
+fetch spans, from: now()-30m
+| filter service.name == "claims-api" and startsWith(toString(span.name), "chat ")
+| summarize chats = count(), failed = countIf(isNotNull(error.type)), by: {error.type}
+```
+Not checked in the UI: the Errors tab of AI Observability.
+
+## Troubleshooting
+
+| Symptom | Likely cause and fix |
+|---|---|
+| Portal shows "not signed in" or returns to sign in | claims-api restarted, sessions are in memory. Sign in again |
+| A scenario seems to have vanished | A pod restarted and its toggles reset. Run the scenario again |
+| Prompts view stops filling | Prompt recording is off after a restart or `reset`. Run `make scenario NAME=show_prompts` |
+| No data in the tenant | Wait 2 to 4 minutes. Logs lag spans. Then check the DynaKube is Running and the pods are injected |
+| `dtctl` says the token refresh failed | Run `dtctl auth login`. Never run `dtctl` calls in parallel |
+| Port 8080 or 8089 refused | The port-forward died, start it again |
+| Locust shows 0 users | The last scenario was `reset` (no load). Run `baseline` |
+| Disk worries | `make disk` reports usage. Demo rows older than 6 hours are deleted every 15 minutes. `make prune` reclaims build cache |
+
+## Known gaps
+
+- The duration tile in AI Observability misreads the unit (the metric value is correct).
+- Guardrail activation card and by-type chart stay at 0.
+- Runtime vulnerability detection of the old log4j in the legacy stub has not been confirmed (spec item 6). Check Security, Vulnerabilities for `legacy-stub`.
+- Masking rule, SLOs and a dashboard are documented as tenant work but not built.
+- Davis problems appear during the peak, but the root cause was not the legacy stub in the records checked.
+- Session Replay not verified.
+- Hallucination needs an evaluation path (spec item 1), not built.
