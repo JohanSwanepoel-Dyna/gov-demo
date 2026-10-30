@@ -1,0 +1,14 @@
+# SLO for the Carer Support Portal demo. The window is 2 hours so a burn shows up quickly in a demo; use now-7d for a realistic window. Create with: dtctl create slo -f docs/slos/payment-completion.yaml
+name: "Carer portal: payment completion"
+description: "Share of finished payments that were posted rather than failed after retries. Burns in monday_peak when the single worker and the slow stub time out."
+customSli:
+  indicator: |-
+      fetch bizevents
+      | filter event.provider == "dcs.carer-portal" and in(event.type, "claim.payment_posted", "claim.payment_failed")
+      | makeTimeseries { posted = countIf(event.type == "claim.payment_posted"), failed = countIf(event.type == "claim.payment_failed") }, interval: 5m
+      | fieldsAdd sli = posted[] * 100.0 / (posted[] + failed[])
+criteria:
+  - timeframeFrom: now-2h
+    timeframeTo: now
+    target: 99
+    warning: 99.5

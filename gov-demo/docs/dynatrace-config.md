@@ -12,7 +12,7 @@ What the demo needs in the Dynatrace tenant, and its status. The lab tenant is S
 | 4 | OneAgent Python sensors | Leave disabled | As found |
 | 5 | RUM application and funnel | Browser sessions, funnel at the upload step | Auto-created, funnel verified |
 | 6 | Masking rule for TFN and Medicare | Show masking in logs and prompts | Applied and verified for logs, business events and recorded prompts |
-| 7 | SLOs | Claim submission and assistant | Not built, proposals below |
+| 7 | SLOs | Claim submission, eligibility, payment completion, assistant | Built, six SLOs, see section 7 |
 | 8 | Davis anomaly detection tuning | A clean problem for the peak scenario | Not done |
 | 9 | Dashboard | Journey, payments, AI usage and cost, RUM funnel, change | Built, see section 9 |
 | 10 | Vulnerability detection of the old log4j | Security story | Not confirmed |
@@ -123,14 +123,22 @@ Roll back by deleting the routing entry (Settings, OpenPipeline, Spans, Dynamic 
 
 Limits: only the labelled forms above are masked. "my tax file number is 123456782" or a bare number is not. Medicare is masked only in the labelled log field. Lines ingested before the rule keep their clear values until the bucket retention expires (this lab only holds synthetic data). Turn `log_pii` and prompt recording off (`make scenario NAME=baseline`) when you are not demonstrating.
 
-## 7. SLOs (not built)
+## 7. SLOs
 
-Proposed definitions, to be created in the tenant:
+Six SLOs, defined in `docs/slos/*.yaml` and created with `dtctl create slo -f docs/slos/<name>.yaml`. Each one is a DQL timeseries that returns a percentage called `sli`, evaluated over the last 2 hours so a burn shows up quickly in a demo (the tenant allows one window per SLO, edit `timeframeFrom` to `now-7d` for a realistic window). All six indicators were tested as queries before they were created.
 
-- Claim submission availability: share of `POST /api/claims/{claim_id}/submit` server spans that succeed. Target 99 percent.
-- Claim submission latency: p95 of the same spans under 1 second.
-- Payment completion: share of submitted claims that end in `claim.payment_posted` rather than `claim.payment_failed` (business events). The `monday_peak` scenario burns this one.
-- Assistant latency: p95 of the `chat` spans of claims-api under 2 seconds.
+| SLO | Indicator | Target (warning) | Burns in |
+|---|---|---|---|
+| Claim submission availability | Submit requests without a 5xx | 99 (99.5) | Stays green, submitting only queues the payment |
+| Claim submission latency under 1 s | Submit requests under 1 s | 95 (97) | Stays green |
+| Eligibility check latency under 1 s | Eligibility checks under 1 s (a synchronous call through the legacy stub) | 95 (97) | monday_peak, bad_release |
+| Payment completion | Payments posted rather than failed (business events) | 99 (99.5) | monday_peak |
+| Assistant availability | Model calls without an error | 99 (99.5) | provider_outage |
+| Assistant latency under 2 s | Model calls under 2 s | 95 (97) | Only with the gateway latency toggle set to slow |
+
+The submission SLOs were in the original spec, but claim submission does not burn in `monday_peak`: the submit call only inserts a queue row and the slow work happens afterwards. The eligibility, payment and assistant availability SLOs were added because those are the ones the scenarios actually burn, and the submission SLOs stay as green controls.
+
+Evaluate one: `dtctl exec slo <id>`. First evaluation, right after creating them (the earlier peak runs were still inside the window): payment completion FAILURE at 98.36 percent, eligibility latency FAILURE at 75.86 percent, the other four SUCCESS. They recover on their own once the window has passed the peak. After a demo, `make scenario NAME=baseline` and wait for the 2 hour window to clear, or accept the red ones as the "after the incident" view.
 
 ## 8. Davis anomaly detection
 

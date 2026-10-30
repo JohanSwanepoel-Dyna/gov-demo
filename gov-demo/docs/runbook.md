@@ -52,6 +52,10 @@ Open it first and leave it on screen. What moves for each scenario (based on the
 
 The web tiles (vitals, completion, abandonment, furthest step) cover browser sessions only, so they fill from `make browser-load` and your own clicks, not from Locust. Run `make browser-load PROFILE=completer SESSIONS=6` and `PROFILE=abandoner SESSIONS=6` before the demo so they have data.
 
+## SLOs
+
+Six SLOs ("Carer portal: ...", 2 hour window) show the damage as budget burn. `monday_peak` burns eligibility latency (it falls to about 4 percent in the worst five minute buckets) and payment completion, `bad_release` burns eligibility latency, `provider_outage` burns assistant availability. The submission SLOs and assistant latency are green controls. Open them in the Service-Level Objectives app, or evaluate from the shell: `dtctl get slos` then `dtctl exec slo <id>`. The 2 hour window means a scenario's damage stays visible for a while after it ends, so for a clean start run `baseline` and allow time, or start the demo with the red ones as the "yesterday's incident" view.
+
 ## Suggested ten minute story
 
 1. baseline: one claim, one trace (2 minutes).
@@ -243,7 +247,7 @@ Not checked in the UI: the Errors tab of AI Observability.
 - The duration tile in AI Observability misreads the unit (the metric value is correct).
 - Guardrail activation card and by-type chart stay at 0.
 - Runtime vulnerability detection of the old log4j in the legacy stub has not been confirmed (spec item 6). Check Security, Vulnerabilities for `legacy-stub`.
-- SLOs are documented but not built. Masking covers the labelled TFN and Medicare forms only.
+- Masking covers the labelled TFN and Medicare forms only. The SLO window is 2 hours, so burn lingers after a scenario.
 - Davis problems appear during the peak, but the root cause was not the legacy stub in the records checked.
 - Session Replay not verified.
 - Hallucination needs an evaluation path (spec item 1), not built.

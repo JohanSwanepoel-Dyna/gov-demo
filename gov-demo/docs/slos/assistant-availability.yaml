@@ -1,0 +1,14 @@
+# SLO for the Carer Support Portal demo. The window is 2 hours so a burn shows up quickly in a demo; use now-7d for a realistic window. Create with: dtctl create slo -f docs/slos/assistant-availability.yaml
+name: "Carer portal: assistant availability"
+description: "Share of assistant model calls that did not fail. Burns in provider_outage."
+customSli:
+  indicator: |-
+      fetch spans
+      | filter service.name == "claims-api" and startsWith(toString(span.name), "chat ")
+      | makeTimeseries { total = count(), failed = countIf(isNotNull(error.type)) }, interval: 5m
+      | fieldsAdd sli = (total[] - failed[]) * 100.0 / total[]
+criteria:
+  - timeframeFrom: now-2h
+    timeframeTo: now
+    target: 99
+    warning: 99.5

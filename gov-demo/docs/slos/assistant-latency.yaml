@@ -1,0 +1,14 @@
+# SLO for the Carer Support Portal demo. The window is 2 hours so a burn shows up quickly in a demo; use now-7d for a realistic window. Create with: dtctl create slo -f docs/slos/assistant-latency.yaml
+name: "Carer portal: assistant latency under 2 s"
+description: "Share of assistant model calls answered in under two seconds. Only burns when the gateway latency toggle is set to slow."
+customSli:
+  indicator: |-
+      fetch spans
+      | filter service.name == "claims-api" and startsWith(toString(span.name), "chat ")
+      | makeTimeseries { total = count(), fast = countIf(duration < 2s) }, interval: 5m
+      | fieldsAdd sli = fast[] * 100.0 / total[]
+criteria:
+  - timeframeFrom: now-2h
+    timeframeTo: now
+    target: 95
+    warning: 97

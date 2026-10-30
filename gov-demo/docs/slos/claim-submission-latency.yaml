@@ -1,0 +1,14 @@
+# SLO for the Carer Support Portal demo. The window is 2 hours so a burn shows up quickly in a demo; use now-7d for a realistic window. Create with: dtctl create slo -f docs/slos/claim-submission-latency.yaml
+name: "Carer portal: claim submission latency under 1 s"
+description: "Share of claim submissions answered in under one second."
+customSli:
+  indicator: |-
+      fetch spans
+      | filter service.name == "claims-api" and span.kind == "server" and span.name == "POST /api/claims/{claim_id}/submit"
+      | makeTimeseries { total = count(), fast = countIf(duration < 1s) }, interval: 5m
+      | fieldsAdd sli = fast[] * 100.0 / total[]
+criteria:
+  - timeframeFrom: now-2h
+    timeframeTo: now
+    target: 95
+    warning: 97
