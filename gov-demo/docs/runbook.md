@@ -41,14 +41,16 @@ Open it first and leave it on screen. What moves for each scenario (based on the
 
 | Scenario | Tiles that move |
 |---|---|
-| baseline | Journey by step, claims over time, tokens by type, chat latency, RUM funnel |
+| baseline | Journey by step, claims over time, tokens by type, chat latency, RUM funnel, web vitals (LCP, CLS, TTFB), journey completion rate |
 | bad_release | Deployment events (new row), server response time p95 for claims-api, problems table |
 | monday_peak | Payments failed, claims over time (failed line), queue wait (average and p95), server response time p95 for the legacy stub, problems table |
-| upload_dropoff | RUM funnel (upload, review and status fall away) |
+| upload_dropoff | RUM funnel (upload, review and status fall away), journey abandonment rate up, furthest step reached (a bar at 5 upload) |
 | ai_injection, ai_pii | Prompts blocked (stays flat when guardrails are off), guardrail outcome per chat |
 | ai_cost_spike | Tokens used and tokens by type |
 | ai_hallucination | Nothing, that is the point: the answer is wrong but no metric changes (see the Prompts view) |
 | provider_outage | Chat errors by type, chat latency |
+
+The web tiles (vitals, completion, abandonment, furthest step) cover browser sessions only, so they fill from `make browser-load` and your own clicks, not from Locust. Run `make browser-load PROFILE=completer SESSIONS=6` and `PROFILE=abandoner SESSIONS=6` before the demo so they have data.
 
 ## Suggested ten minute story
 

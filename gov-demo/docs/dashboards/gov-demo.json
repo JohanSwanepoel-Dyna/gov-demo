@@ -397,12 +397,132 @@
    },
    "18": {
     "type": "markdown",
-    "content": "## Experience and change"
+    "content": "## Web experience (browser sessions)"
    },
    "19": {
+    "title": "Largest contentful paint, p75",
+    "type": "data",
+    "query": "fetch user.events\n| filter dt.rum.application.entity == \"APPLICATION-EA7C4B59F27D43EB\"\n| filter isNotNull(web_vitals.largest_contentful_paint)\n| summarize value = percentile(web_vitals.largest_contentful_paint, 75)",
+    "visualization": "singleValue",
+    "visualizationSettings": {
+     "autoSelectVisualization": false,
+     "singleValue": {
+      "label": "LCP",
+      "recordField": "value"
+     }
+    },
+    "querySettings": {
+     "maxResultRecords": 1000,
+     "defaultScanLimitGbytes": 500,
+     "maxResultMegaBytes": 100,
+     "defaultSamplingRatio": 10,
+     "enableSampling": false
+    }
+   },
+   "20": {
+    "title": "Interaction to next paint, p75",
+    "type": "data",
+    "query": "fetch user.events\n| filter dt.rum.application.entity == \"APPLICATION-EA7C4B59F27D43EB\"\n| filter isNotNull(web_vitals.interaction_to_next_paint)\n| summarize value = percentile(web_vitals.interaction_to_next_paint, 75)",
+    "visualization": "singleValue",
+    "visualizationSettings": {
+     "autoSelectVisualization": false,
+     "singleValue": {
+      "label": "INP",
+      "recordField": "value"
+     }
+    },
+    "querySettings": {
+     "maxResultRecords": 1000,
+     "defaultScanLimitGbytes": 500,
+     "maxResultMegaBytes": 100,
+     "defaultSamplingRatio": 10,
+     "enableSampling": false
+    }
+   },
+   "21": {
+    "title": "Cumulative layout shift, p75",
+    "type": "data",
+    "query": "fetch user.events\n| filter dt.rum.application.entity == \"APPLICATION-EA7C4B59F27D43EB\"\n| filter isNotNull(web_vitals.cumulative_layout_shift)\n| summarize value = percentile(web_vitals.cumulative_layout_shift, 75)",
+    "visualization": "singleValue",
+    "visualizationSettings": {
+     "autoSelectVisualization": false,
+     "singleValue": {
+      "label": "CLS",
+      "recordField": "value"
+     }
+    },
+    "querySettings": {
+     "maxResultRecords": 1000,
+     "defaultScanLimitGbytes": 500,
+     "maxResultMegaBytes": 100,
+     "defaultSamplingRatio": 10,
+     "enableSampling": false
+    }
+   },
+   "22": {
+    "title": "Time to first byte, p75",
+    "type": "data",
+    "query": "fetch user.events\n| filter dt.rum.application.entity == \"APPLICATION-EA7C4B59F27D43EB\"\n| filter isNotNull(web_vitals.time_to_first_byte)\n| summarize value = percentile(web_vitals.time_to_first_byte, 75)",
+    "visualization": "singleValue",
+    "visualizationSettings": {
+     "autoSelectVisualization": false,
+     "singleValue": {
+      "label": "TTFB",
+      "recordField": "value"
+     }
+    },
+    "querySettings": {
+     "maxResultRecords": 1000,
+     "defaultScanLimitGbytes": 500,
+     "maxResultMegaBytes": 100,
+     "defaultSamplingRatio": 10,
+     "enableSampling": false
+    }
+   },
+   "23": {
+    "title": "Journey completion rate",
+    "type": "data",
+    "query": "fetch user.events\n| filter dt.rum.application.entity == \"APPLICATION-EA7C4B59F27D43EB\"\n| filter characteristics.has_view_summary == true\n| summarize logins = countIf(view.detected_name == \"/login\"), statuses = countIf(view.detected_name == \"/status\"), by: {dt.rum.session.id}\n| filter logins > 0\n| summarize sessions = count(), completed = countIf(statuses > 0)\n| fieldsAdd completion = completed * 100.0 / sessions\n| fields completion",
+    "visualization": "singleValue",
+    "visualizationSettings": {
+     "autoSelectVisualization": false,
+     "singleValue": {
+      "label": "Completed %",
+      "recordField": "completion"
+     }
+    },
+    "querySettings": {
+     "maxResultRecords": 1000,
+     "defaultScanLimitGbytes": 500,
+     "maxResultMegaBytes": 100,
+     "defaultSamplingRatio": 10,
+     "enableSampling": false
+    }
+   },
+   "24": {
+    "title": "Journey abandonment rate",
+    "type": "data",
+    "query": "fetch user.events\n| filter dt.rum.application.entity == \"APPLICATION-EA7C4B59F27D43EB\"\n| filter characteristics.has_view_summary == true\n| summarize logins = countIf(view.detected_name == \"/login\"), statuses = countIf(view.detected_name == \"/status\"), by: {dt.rum.session.id}\n| filter logins > 0\n| summarize sessions = count(), completed = countIf(statuses > 0)\n| fieldsAdd abandonment = (sessions - completed) * 100.0 / sessions\n| fields abandonment",
+    "visualization": "singleValue",
+    "visualizationSettings": {
+     "autoSelectVisualization": false,
+     "singleValue": {
+      "label": "Abandoned %",
+      "recordField": "abandonment"
+     }
+    },
+    "querySettings": {
+     "maxResultRecords": 1000,
+     "defaultScanLimitGbytes": 500,
+     "maxResultMegaBytes": 100,
+     "defaultSamplingRatio": 10,
+     "enableSampling": false
+    }
+   },
+   "25": {
     "title": "RUM funnel, sessions per step",
     "type": "data",
-    "query": "fetch user.events\n| filter dt.rum.application.entity == \"APPLICATION-EA7C4B59F27D43EB\" and characteristics.has_view_summary == true\n| summarize sessions = countDistinct(dt.rum.session.id), by: {view.detected_name}\n| sort sessions desc",
+    "query": "fetch user.events\n| filter dt.rum.application.entity == \"APPLICATION-EA7C4B59F27D43EB\"\n| filter characteristics.has_view_summary == true\n| summarize sessions = countDistinct(dt.rum.session.id), by: {view.detected_name}\n| sort sessions desc",
     "visualization": "categoricalBarChart",
     "visualizationSettings": {
      "autoSelectVisualization": false,
@@ -432,7 +552,86 @@
      "enableSampling": false
     }
    },
-   "20": {
+   "26": {
+    "title": "Furthest step reached per session",
+    "type": "data",
+    "query": "fetch user.events\n| filter dt.rum.application.entity == \"APPLICATION-EA7C4B59F27D43EB\"\n| filter characteristics.has_view_summary == true\n| fieldsAdd step = if(view.detected_name == \"/login\", 1, else: if(view.detected_name == \"/payment-type\", 2, else: if(view.detected_name == \"/details\", 3, else: if(view.detected_name == \"/eligibility\", 4, else: if(view.detected_name == \"/upload\", 5, else: if(view.detected_name == \"/review\", 6, else: if(view.detected_name == \"/status\", 7, else: 0)))))))\n| summarize furthest = max(step), by: {dt.rum.session.id}\n| filter furthest > 0\n| fieldsAdd reached = if(furthest == 1, \"1 login\", else: if(furthest == 2, \"2 payment-type\", else: if(furthest == 3, \"3 details\", else: if(furthest == 4, \"4 eligibility\", else: if(furthest == 5, \"5 upload\", else: if(furthest == 6, \"6 review\", else: if(furthest == 7, \"7 status\", else: \"other\")))))))\n| summarize sessions = count(), by: {reached}\n| sort reached asc",
+    "visualization": "categoricalBarChart",
+    "visualizationSettings": {
+     "autoSelectVisualization": false,
+     "chartSettings": {
+      "legend": {
+       "position": "bottom"
+      }
+     },
+     "coloring": {
+      "colorRules": [
+       {
+        "colorMode": "color-palette",
+        "colorPalette": "purple-rain",
+        "comparator": "= *value*",
+        "field": "DT.name",
+        "type": "string",
+        "value": ""
+       }
+      ]
+     }
+    },
+    "querySettings": {
+     "maxResultRecords": 1000,
+     "defaultScanLimitGbytes": 500,
+     "maxResultMegaBytes": 100,
+     "defaultSamplingRatio": 10,
+     "enableSampling": false
+    }
+   },
+   "27": {
+    "title": "Web vitals over time, p75",
+    "type": "data",
+    "query": "fetch user.events\n| filter dt.rum.application.entity == \"APPLICATION-EA7C4B59F27D43EB\"\n| makeTimeseries lcp = percentile(web_vitals.largest_contentful_paint, 75), fcp = percentile(web_vitals.first_contentful_paint, 75), ttfb = percentile(web_vitals.time_to_first_byte, 75)",
+    "visualization": "lineChart",
+    "visualizationSettings": {
+     "autoSelectVisualization": false,
+     "chartSettings": {
+      "legend": {
+       "position": "bottom"
+      }
+     }
+    },
+    "querySettings": {
+     "maxResultRecords": 1000,
+     "defaultScanLimitGbytes": 500,
+     "maxResultMegaBytes": 100,
+     "defaultSamplingRatio": 10,
+     "enableSampling": false
+    }
+   },
+   "28": {
+    "title": "Browser errors over time",
+    "type": "data",
+    "query": "fetch user.events\n| filter dt.rum.application.entity == \"APPLICATION-EA7C4B59F27D43EB\"\n| makeTimeseries javascript = sum(error.exception_count), http_4xx = sum(error.http_4xx_count), http_5xx = sum(error.http_5xx_count)",
+    "visualization": "lineChart",
+    "visualizationSettings": {
+     "autoSelectVisualization": false,
+     "chartSettings": {
+      "legend": {
+       "position": "bottom"
+      }
+     }
+    },
+    "querySettings": {
+     "maxResultRecords": 1000,
+     "defaultScanLimitGbytes": 500,
+     "maxResultMegaBytes": 100,
+     "defaultSamplingRatio": 10,
+     "enableSampling": false
+    }
+   },
+   "29": {
+    "type": "markdown",
+    "content": "## Change and problems"
+   },
+   "30": {
     "title": "Deployment events",
     "type": "data",
     "query": "fetch events\n| filter event.type == \"CUSTOM_DEPLOYMENT\"\n| fields timestamp, event.name, event.description\n| sort timestamp desc\n| limit 10",
@@ -449,7 +648,7 @@
      "enableSampling": false
     }
    },
-   "21": {
+   "31": {
     "title": "Problems on the demo services",
     "type": "data",
     "query": "fetch dt.davis.problems\n| filter contains(toString(affected_entity_ids), \"SERVICE-A07B249CEC01B91E\") or contains(toString(affected_entity_ids), \"SERVICE-F5D773513E6C7E59\") or contains(toString(affected_entity_ids), \"SERVICE-B5B342815508E1EE\") or contains(toString(affected_entity_ids), \"SERVICE-197A36756FADC0DA\") or contains(toString(affected_entity_ids), \"SERVICE-4896FBFBEE918D79\")\n| fields timestamp, display_id, event.name, event.status\n| sort timestamp desc\n| limit 10",
@@ -585,19 +784,79 @@
    "19": {
     "x": 0,
     "y": 30,
-    "w": 8,
-    "h": 7
+    "w": 4,
+    "h": 4
    },
    "20": {
+    "x": 4,
+    "y": 30,
+    "w": 4,
+    "h": 4
+   },
+   "21": {
     "x": 8,
     "y": 30,
+    "w": 4,
+    "h": 4
+   },
+   "22": {
+    "x": 12,
+    "y": 30,
+    "w": 4,
+    "h": 4
+   },
+   "23": {
+    "x": 16,
+    "y": 30,
+    "w": 4,
+    "h": 4
+   },
+   "24": {
+    "x": 20,
+    "y": 30,
+    "w": 4,
+    "h": 4
+   },
+   "25": {
+    "x": 0,
+    "y": 34,
     "w": 8,
     "h": 7
    },
-   "21": {
-    "x": 16,
-    "y": 30,
+   "26": {
+    "x": 8,
+    "y": 34,
     "w": 8,
+    "h": 7
+   },
+   "27": {
+    "x": 16,
+    "y": 34,
+    "w": 8,
+    "h": 7
+   },
+   "28": {
+    "x": 0,
+    "y": 41,
+    "w": 12,
+    "h": 6
+   },
+   "29": {
+    "x": 0,
+    "y": 47,
+    "w": 24,
+    "h": 1
+   },
+   "30": {
+    "x": 0,
+    "y": 48,
+    "w": 12,
+    "h": 7
+   },
+   "31": {
+    "x": 12,
+    "y": 48,
+    "w": 12,
     "h": 7
    }
   },

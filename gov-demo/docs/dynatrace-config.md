@@ -112,12 +112,15 @@ Not tuned. During the lab peak runs Davis opened 9 problems on the demo services
 
 ## 9. Dashboard
 
-Built: "Carer Support Portal demo" (id `fff6ca52-9dac-495c-91db-2f02b18cc977`, owner is the account that applied it), https://imb05402.apps.dynatrace.com/ui/apps/dynatrace.dashboards/dashboard/fff6ca52-9dac-495c-91db-2f02b18cc977. 22 tiles, 18 of them data tiles, all queries checked against the tenant before applying.
+Built: "Carer Support Portal demo" (id `fff6ca52-9dac-495c-91db-2f02b18cc977`, owner is the account that applied it), https://imb05402.apps.dynatrace.com/ui/apps/dynatrace.dashboards/dashboard/fff6ca52-9dac-495c-91db-2f02b18cc977. 32 tiles, 27 of them data tiles, all queries checked against the tenant before applying.
 
 - Headline numbers: claims submitted, payments posted, payments failed, average queue wait, tokens used, prompts blocked by guardrails.
 - Claims and payments: journey events by step, claims over time (paid in the good colour, failed in the critical colour), payment queue wait (average and p95), failed payments by error, server response time p95 by service.
 - AI assistant: tokens by type, chat completion latency (p50 and p95), guardrail outcome per chat, chat errors by type.
-- Experience and change: RUM funnel (sessions per step), deployment events, Davis problems on the demo services.
+- Web experience (browser sessions, from RUM): Core Web Vitals as p75 (largest contentful paint, interaction to next paint, cumulative layout shift) plus time to first byte, journey completion rate and abandonment rate, the RUM funnel (sessions per step), the furthest step each session reached (the abandonment histogram), web vitals over time, and browser errors over time (JavaScript, HTTP 4xx and 5xx).
+- Change and problems: deployment events and the Davis problems on the demo services.
+
+Reading the web tiles: completion rate is the share of sessions that reached `/login` and went on to `/status`. Abandonment is the rest, and "furthest step reached" shows where they stopped (ineligible citizens stop at 4 eligibility, abandoners at 5 upload, chat-only sessions at 2 payment-type). These cover browser sessions only, Locust is protocol level and has no RUM sessions. INP often reads 0 in the lab because scripted browsers make few interactions, so treat it as a placeholder until real clicking happens.
 
 The tiles follow the dashboard timeframe (they carry no timeframe of their own), so pick the window with the selector, for example the last 2 hours. Not on the dashboard: queue depth (it lives in the `payment_queue` table, not in the tenant) and Locust's own request rate.
 

@@ -121,18 +121,57 @@ bars("Guardrail outcome per chat",
 bars("Chat errors by type", CHAT + "\n| filter isNotNull(error.type)\n| summarize failed = count(), by: {error.type}", 20, 22, 4,
      palette="fireplace")
 
-# Experience and change
-md("## Experience and change", 0, 29, 24, 1)
+# Web experience (RUM): vitals and journey completion
+RUM = f'fetch user.events\n| filter dt.rum.application.entity == "{RUM_APP}"'
+VIEWS = RUM + "\n| filter characteristics.has_view_summary == true"
+md("## Web experience (browser sessions)", 0, 29, 24, 1)
+for title, field, label, x in (("Largest contentful paint, p75", "web_vitals.largest_contentful_paint", "LCP", 0),
+                               ("Interaction to next paint, p75", "web_vitals.interaction_to_next_paint", "INP", 4),
+                               ("Cumulative layout shift, p75", "web_vitals.cumulative_layout_shift", "CLS", 8),
+                               ("Time to first byte, p75", "web_vitals.time_to_first_byte", "TTFB", 12)):
+    data(title, RUM + f"\n| filter isNotNull({field})\n| summarize value = percentile({field}, 75)", "singleValue",
+         {"singleValue": {"label": label, "recordField": "value"}}, x=x, y=30, w=4, h=4)
+SESSIONS = (VIEWS + '\n| summarize logins = countIf(view.detected_name == "/login"), statuses = countIf(view.detected_name == "/status"), '
+            "by: {dt.rum.session.id}\n| filter logins > 0\n| summarize sessions = count(), completed = countIf(statuses > 0)")
+data("Journey completion rate", SESSIONS + "\n| fieldsAdd completion = completed * 100.0 / sessions\n| fields completion", "singleValue",
+     {"singleValue": {"label": "Completed %", "recordField": "completion"}}, x=16, y=30, w=4, h=4)
+data("Journey abandonment rate", SESSIONS + "\n| fieldsAdd abandonment = (sessions - completed) * 100.0 / sessions\n| fields abandonment",
+     "singleValue", {"singleValue": {"label": "Abandoned %", "recordField": "abandonment"}}, x=20, y=30, w=4, h=4)
 bars("RUM funnel, sessions per step",
-     f'fetch user.events\n| filter dt.rum.application.entity == "{RUM_APP}" and characteristics.has_view_summary == true\n'
-     "| summarize sessions = countDistinct(dt.rum.session.id), by: {view.detected_name}\n| sort sessions desc", 0, 30, 8)
+     VIEWS + "\n| summarize sessions = countDistinct(dt.rum.session.id), by: {view.detected_name}\n| sort sessions desc", 0, 34, 8)
+STEPS = ["/login", "/payment-type", "/details", "/eligibility", "/upload", "/review", "/status"]
+
+
+def nested_if(field, mapping, default, quote=True):
+    """DQL has no lookup in a tile query, so build the nested if() for a value to label mapping."""
+    out = default
+    for key, label in reversed(list(mapping.items())):
+        shown = f'"{key}"' if quote else str(key)
+        out = f'if({field} == {shown}, {label}, else: {out})'
+    return out
+
+
+step_no = nested_if("view.detected_name", {v: i + 1 for i, v in enumerate(STEPS)}, "0")
+step_label = nested_if("furthest", {i + 1: f'"{i + 1} {v.strip("/")}"' for i, v in enumerate(STEPS)}, '"other"', quote=False)
+bars("Furthest step reached per session",
+     VIEWS + f"\n| fieldsAdd step = {step_no}\n| summarize furthest = max(step), by: {{dt.rum.session.id}}\n| filter furthest > 0\n"
+             f"| fieldsAdd reached = {step_label}\n| summarize sessions = count(), by: {{reached}}\n| sort reached asc", 8, 34, 8)
+lines("Web vitals over time, p75",
+      RUM + "\n| makeTimeseries lcp = percentile(web_vitals.largest_contentful_paint, 75), "
+            "fcp = percentile(web_vitals.first_contentful_paint, 75), ttfb = percentile(web_vitals.time_to_first_byte, 75)", 16, 34, 8)
+lines("Browser errors over time",
+      RUM + "\n| makeTimeseries javascript = sum(error.exception_count), http_4xx = sum(error.http_4xx_count), "
+            "http_5xx = sum(error.http_5xx_count)", 0, 41, 12, h=6)
+
+# Change and problems
+md("## Change and problems", 0, 47, 24, 1)
 table("Deployment events",
       'fetch events\n| filter event.type == "CUSTOM_DEPLOYMENT"\n'
-      "| fields timestamp, event.name, event.description\n| sort timestamp desc\n| limit 10", 8, 30, 8)
+      "| fields timestamp, event.name, event.description\n| sort timestamp desc\n| limit 10", 0, 48, 12)
 ids = " or ".join(f'contains(toString(affected_entity_ids), "{i}")' for i in SERVICES)
 table("Problems on the demo services",
       f"fetch dt.davis.problems\n| filter {ids}\n| fields timestamp, display_id, event.name, event.status\n| sort timestamp desc\n| limit 10",
-      16, 30, 8)
+      12, 48, 12)
 
 dashboard = {"version": 21, "variables": [], "tiles": tiles, "layouts": layouts, "annotations": [], "settings": {},
              "importedWithCode": False}
