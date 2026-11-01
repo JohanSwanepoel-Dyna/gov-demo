@@ -300,7 +300,7 @@ Dynatrace documentation states these are metric instruments that the instrumenta
 
 ### 8.5 Evaluation results
 
-Dynatrace stores evaluation results as business events with `event.type == "gen_ai.evaluation.result"`, carrying `gen_ai.evaluation.name`, `gen_ai.evaluation.score.value`, `gen_ai.evaluation.score.label` (pass or fail), an explanation and the source trace id. Production path is the dt-evals toolkit or Dynatrace-side evaluation with a configured judge LLM. A mock gateway cannot act as judge. See section 14, item 1.
+Dynatrace stores evaluation results as business events with `event.type == "gen_ai.evaluation.result"`, carrying `gen_ai.evaluation.name`, `gen_ai.evaluation.score.value`, `gen_ai.evaluation.score.label` (pass or fail), an explanation and the source trace id. Production path is the dt-evals toolkit or Dynatrace-side evaluation with a configured judge LLM. A mock gateway cannot act as judge, so the demo emits clearly labelled synthetic results (`demo_synthetic = true`) from `claims-api` after each answer built on the eligibility tool, using a deterministic groundedness rule (the amount quoted must match the rules engine, no invented policy section). Delivered as a log line that OpenPipeline turns into the business event. See section 14, item 1.
 
 ### 8.6 Business events
 
@@ -432,7 +432,7 @@ The stack runs continuously with load, so growth must be bounded:
 
 | # | Item | Status | Default if no decision |
 |---|---|---|---|
-| 1 | Evaluation path for the hallucination scenario | Decision needed. Judge LLM cannot be the mock | Emit clearly labelled synthetic `gen_ai.evaluation.result` business events from the gateway (`demo.synthetic=true`). Upgrade to dt-evals with a real judge later |
+| 1 | Evaluation path for the hallucination scenario | Resolved with the fallback: synthetic `gen_ai.evaluation.result` events from claims-api (a deterministic rule, labelled `demo_synthetic = true`), 27 events verified in the tenant. Display in AI Observability not verified | Upgrade to dt-evals with a real judge later |
 | 2 | Whether OneAgent captures manual OTel spans from the Python services in this lab | Resolved for the lab: OneAgent does not trace the Python services, OTel does the work and the traces join | Python services export OTLP via `telemetry-ingest` (see section 8.1) |
 | 3 | Provider and model naming for the mock, and whether Dynatrace cost views compute cost for it | Unverified | Use a plausible provider and model name, label the mock clearly in the README. If cost is not calculated, compute cost from token counts in DQL |
 | 4 | Native guardrail span shape in the AI Observability guardrails view | Unverified. `gen_ai.guardrail.name` appears in Dynatrace attribute mappings, view requirements not confirmed | Build as specified in 8.2, adjust after viewing the tenant |

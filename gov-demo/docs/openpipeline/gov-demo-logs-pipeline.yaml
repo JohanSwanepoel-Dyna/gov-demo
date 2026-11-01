@@ -50,11 +50,12 @@ value:
         type: dql
         enabled: true
         description: Parse the JSON log line into fields
-        matcher: matchesValue(k8s.namespace.name, "gov-demo") and (matchesPhrase(content, "business_event") or matchesPhrase(content, "deployment_event"))
+        matcher: matchesValue(k8s.namespace.name, "gov-demo") and (matchesPhrase(content, "business_event") or matchesPhrase(content, "deployment_event") or matchesPhrase(content, "evaluation_event"))
         dql:
           script: |-
             parse content, "JSON:j"
             | fieldsAdd business_event = j[business_event], claim_id = j[claim_id], payment_type = j[payment_type], decision = j[decision], duration_ms = j[duration_ms], size_bytes = j[size_bytes], amount_cents = j[amount_cents], queue_wait_ms = j[queue_wait_ms], error = j[error], deployment_event = j[deployment_event], deployment_name = j[deployment_name], release_version = j[release_version], previous_version = j[previous_version]
+            | fieldsAdd evaluation_event = j[evaluation_event], evaluation_name = j[evaluation_name], evaluation_score = j[evaluation_score], evaluation_label = j[evaluation_label], evaluation_explanation = j[evaluation_explanation], conversation_id = j[conversation_id], demo_synthetic = j[demo_synthetic], `gen_ai.evaluation.name` = j[evaluation_name], `gen_ai.evaluation.score.value` = j[evaluation_score], `gen_ai.evaluation.score.label` = j[evaluation_label], `gen_ai.evaluation.explanation` = j[evaluation_explanation], `gen_ai.conversation.id` = j[conversation_id]
             | fieldsRemove j
   dataExtraction:
     processors:
@@ -140,5 +141,19 @@ value:
           eventType:
             type: constant
             constant: claim.payment_failed
+          fieldExtraction:
+            type: includeAll
+      - id: processor_gov_demo_evaluation
+        type: bizevent
+        enabled: true
+        description: Synthetic groundedness evaluation result (a deterministic rule in claims-api, not a judge model)
+        matcher: isNotNull(evaluation_name)
+        bizevent:
+          eventProvider:
+            type: constant
+            constant: dcs.carer-portal
+          eventType:
+            type: constant
+            constant: gen_ai.evaluation.result
           fieldExtraction:
             type: includeAll

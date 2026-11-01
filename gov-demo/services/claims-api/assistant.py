@@ -2,6 +2,7 @@
 import json
 import logging
 import os
+import re
 import time
 import urllib.error
 import urllib.request
@@ -39,6 +40,8 @@ TOOLS = [{"type": "function", "function": {
         "caring_hours": {"type": "integer"}},
         "required": ["payment_type", "income_band", "caring_hours"]}}}]
 
+AMOUNT = re.compile(r"\$\s?([\d,]+\.\d{2})")
+INVENTED_CLAUSE = re.compile(r"\bsection\s+\d+[A-Z]?\(\d+\)", re.I)  # the policy has no numbered sections to cite
 CONVERSATIONS = {}  # (citizen_id, conversation_id) -> messages, in memory
 
 
@@ -105,6 +108,21 @@ def run_tool(call, citizen_id, conversation_id):
     return {"role": "tool", "tool_call_id": call["id"], "content": json.dumps(result)}
 
 
+def evaluate_groundedness(reply, tool_result):
+    """Synthetic evaluation, a deterministic rule and not a judge model. An answer built on a tool result must quote
+    the same amount and must not cite a clause that does not exist. Returns (score, label, explanation)."""
+    expected = f"{tool_result.get('amount_cents', 0) / 100:,.2f}"
+    wrong = [a for a in AMOUNT.findall(reply) if a != expected]
+    problems = []
+    if wrong:
+        problems.append(f"quotes ${wrong[0]} but the rules engine returned ${expected}")
+    if INVENTED_CLAUSE.search(reply):
+        problems.append("cites a policy section that does not exist")
+    if problems:
+        return 0.0, "fail", "; ".join(problems)
+    return 1.0, "pass", "amounts match the tool result and no invented clause"
+
+
 def handle(citizen_id, conversation_id, user_message):
     history = CONVERSATIONS.setdefault((citizen_id, conversation_id), [])
     history.append({"role": "user", "content": user_message})
@@ -127,6 +145,14 @@ def handle(citizen_id, conversation_id, user_message):
                 break
             for call in message["tool_calls"]:
                 history.append(run_tool(call, citizen_id, conversation_id))
+    tool_result = next((json.loads(m["content"]) for m in reversed(history[-6:]) if m.get("role") == "tool"), None)
+    if tool_result is not None and reply and not flagged:
+        score, label, why = evaluate_groundedness(reply, tool_result)
+        # A log line, OpenPipeline turns it into a gen_ai.evaluation.result business event (docs/dynatrace-config.md).
+        log.info("evaluation", extra={"fields": {
+            "evaluation_event": True, "evaluation_name": "groundedness", "evaluation_score": score,
+            "evaluation_label": label, "evaluation_explanation": why, "demo_synthetic": True,
+            "conversation_id": conversation_id}})
     del history[:-20]  # keep conversations small
     log.info("assistant turn", extra={"fields": {"conversation_id": conversation_id, "flagged": flagged}})
     return {"conversation_id": conversation_id, "reply": reply, "flagged": flagged, "options": options}

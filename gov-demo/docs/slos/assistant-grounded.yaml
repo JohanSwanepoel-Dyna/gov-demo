@@ -1,0 +1,14 @@
+# SLO for the Carer Support Portal demo. The window is 2 hours so a burn shows up quickly in a demo; use now-7d for a realistic window. Create with: dtctl create slo -f docs/slos/assistant-grounded.yaml
+name: "Carer portal: assistant answers grounded"
+description: "Share of assistant answers whose groundedness evaluation passed (the amount quoted matches the rules engine and no invented clause). The evaluation is synthetic, a deterministic rule in claims-api. Burns in ai_hallucination."
+customSli:
+  indicator: |-
+      fetch bizevents
+      | filter event.type == "gen_ai.evaluation.result" and `gen_ai.evaluation.name` == "groundedness"
+      | makeTimeseries { total = count(), passed = countIf(`gen_ai.evaluation.score.label` == "pass") }, interval: 5m
+      | fieldsAdd sli = passed[] * 100.0 / total[]
+criteria:
+  - timeframeFrom: now-2h
+    timeframeTo: now
+    target: 95
+    warning: 97

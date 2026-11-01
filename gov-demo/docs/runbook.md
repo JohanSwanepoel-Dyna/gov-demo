@@ -47,14 +47,14 @@ Open it first and leave it on screen. What moves for each scenario (based on the
 | upload_dropoff | RUM funnel (upload, review and status fall away), journey abandonment rate up, furthest step reached (a bar at 5 upload) |
 | ai_injection, ai_pii | Prompts blocked (stays flat when guardrails are off), guardrail outcome per chat |
 | ai_cost_spike | Tokens used and tokens by type |
-| ai_hallucination | Nothing, that is the point: the answer is wrong but no metric changes (see the Prompts view) |
+| ai_hallucination | Answer groundedness (pass rate falls, failed count rises) |
 | provider_outage | Chat errors by type, chat latency |
 
 The web tiles (vitals, completion, abandonment, furthest step) cover browser sessions only, so they fill from `make browser-load` and your own clicks, not from Locust. Run `make browser-load PROFILE=completer SESSIONS=6` and `PROFILE=abandoner SESSIONS=6` before the demo so they have data.
 
 ## SLOs
 
-Six SLOs ("Carer portal: ...", 2 hour window) show the damage as budget burn. `monday_peak` burns eligibility latency (it falls to about 4 percent in the worst five minute buckets) and payment completion, `bad_release` burns eligibility latency, `provider_outage` burns assistant availability. The submission SLOs and assistant latency are green controls. Open them in the Service-Level Objectives app, or evaluate from the shell: `dtctl get slos` then `dtctl exec slo <id>`. The 2 hour window means a scenario's damage stays visible for a while after it ends, so for a clean start run `baseline` and allow time, or start the demo with the red ones as the "yesterday's incident" view.
+Seven SLOs ("Carer portal: ...", 2 hour window) show the damage as budget burn. `monday_peak` burns eligibility latency (it falls to about 4 percent in the worst five minute buckets) and payment completion, `bad_release` burns eligibility latency, `provider_outage` burns assistant availability, `ai_hallucination` burns assistant answers grounded. The submission SLOs and assistant latency are green controls. Open them in the Service-Level Objectives app, or evaluate from the shell: `dtctl get slos` then `dtctl exec slo <id>`. The 2 hour window means a scenario's damage stays visible for a while after it ends, so for a clean start run `baseline` and allow time, or start the demo with the red ones as the "yesterday's incident" view.
 
 ## Suggested ten minute story
 
@@ -213,9 +213,25 @@ timeseries tokens = sum(gen_ai.client.token.usage), by: {gen_ai.token.type}, fro
 
 Run: `make scenario NAME=ai_hallucination`, click "Check my eligibility" (guided: pick hours and income) or "Quick check". The amount is 37 percent too high and the answer adds a non-existent clause (section 14B(2) of the Carer Support Act 2031). Guardrails are off here, because with guardrails on the grounding check blocks the wrong amount.
 
-Show: Prompts view, the answer next to the rules engine result in the tool call (the tool result holds the correct amount). Compare with `baseline`.
+Show:
+- Prompts view: the answer next to the rules engine result in the tool call (the tool result holds the correct amount). Compare with `baseline`.
+- Evaluation results: after each answer built on the eligibility tool, claims-api checks it with a deterministic rule and a `gen_ai.evaluation.result` event lands in the tenant with label `fail` and the explanation ("quotes $356.20 but the rules engine returned $260.00; cites a policy section that does not exist"). It links to the chat by `gen_ai.conversation.id` and to the trace by trace id.
+- The dashboard: "Failed groundedness evaluations" and the evaluation results over time, and the SLO "Carer portal: assistant answers grounded" burning (86 percent in the test run against a 95 percent target).
 
-Caveat: Dynatrace does not detect hallucination on its own. That needs an evaluation step (spec item 1), which is not built.
+```
+fetch bizevents, from: now()-30m
+| filter event.type == "gen_ai.evaluation.result"
+| summarize results = count(), by: {`gen_ai.evaluation.score.label`}
+```
+```
+fetch bizevents, from: now()-30m
+| filter event.type == "gen_ai.evaluation.result" and `gen_ai.evaluation.score.label` == "fail"
+| fields timestamp, `gen_ai.evaluation.explanation`, `gen_ai.conversation.id`, trace_id
+```
+
+Say plainly: the evaluation is synthetic (`demo_synthetic = true`), a deterministic rule stands in for a judge model, because a mock gateway cannot judge itself. In production this is where an LLM judge or the dt-evals toolkit would sit. Dynatrace itself does not detect a hallucination, it stores the evaluation results you give it.
+
+Not verified: whether the AI Observability app has a view for these evaluation results. The DQL and the dashboard show them.
 
 ## provider_outage: model provider errors
 
@@ -252,4 +268,4 @@ Not checked in the UI: the Errors tab of AI Observability.
 - Masking covers the labelled TFN and Medicare forms only. The SLO window is 2 hours, so burn lingers after a scenario.
 - Davis problems appear during the peak, late and fragmented, with no root cause on the stub. Decided not to tune, the SLOs carry the burn story.
 - Session Replay not verified.
-- Hallucination needs an evaluation path (spec item 1), not built.
+- The hallucination evaluation is a synthetic rule, not a judge model, and its display in AI Observability is not verified.

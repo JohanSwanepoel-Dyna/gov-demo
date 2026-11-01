@@ -12,7 +12,7 @@ What the demo needs in the Dynatrace tenant, and its status. The lab tenant is S
 | 4 | OneAgent Python sensors | Leave disabled | As found |
 | 5 | RUM application and funnel | Browser sessions, funnel at the upload step | Auto-created, funnel verified |
 | 6 | Masking rule for TFN and Medicare | Show masking in logs and prompts | Applied and verified for logs, business events and recorded prompts |
-| 7 | SLOs | Claim submission, eligibility, payment completion, assistant | Built, six SLOs, see section 7 |
+| 7 | SLOs | Claim submission, eligibility, payment completion, assistant | Built, seven SLOs, see section 7 |
 | 8 | Davis anomaly detection tuning | A clean problem for the peak scenario | Decided not to tune, the SLOs carry the burn story (see section 8) |
 | 9 | Dashboard | Journey, payments, AI usage and cost, RUM funnel, change | Built, see section 9 |
 | 10 | Vulnerability detection of the old log4j | Security story | Not confirmed |
@@ -52,6 +52,7 @@ The apps log structured JSON. Lines that represent a business event carry a `bus
 | `claim.submitted` | claims-api | claim_id, payment_type, reference |
 | `claim.payment_posted` | payment-worker | claim_id, amount_cents, queue_wait_ms |
 | `claim.payment_failed` | payment-worker | claim_id, error (final failure only) |
+| `gen_ai.evaluation.result` | claims-api | the standard `gen_ai.evaluation.*` attributes (name `groundedness`, score value 1 or 0, label pass or fail, explanation), `gen_ai.conversation.id`, trace and span id, `demo_synthetic` |
 
 OneAgent log ingestion keeps the JSON in `content` and lifts only `trace_id` and `span_id` to attributes, so the pipeline first parses the JSON, then extracts one business event per type. The fields `attempts` and `final` of `claim.payment_failed` are logged but not parsed yet, add them to the parse step if you want them as event fields.
 
@@ -74,6 +75,13 @@ fetch events, from: now()-30m | filter event.type == "CUSTOM_DEPLOYMENT"
 ```
 
 Abandonment is derived in DQL as drafts without a later submit, see the runbook.
+
+Evaluation results: after each answer that is built on the eligibility tool, claims-api checks it with a deterministic rule (the amount quoted must match the rules engine, no invented policy section) and logs a line with `evaluation_event`. The same pipeline parses it and extracts a `gen_ai.evaluation.result` business event, provider `dcs.carer-portal`, with the standard attributes `gen_ai.evaluation.name`, `.score.value`, `.score.label` and `.explanation` plus `gen_ai.conversation.id` and the trace id. It is labelled `demo_synthetic = true` because a deterministic rule stands in for a judge model (a mock gateway cannot judge itself). Verified: 27 events (19 pass, 8 fail) in the tenant from a baseline and an `ai_hallucination` run. Not verified: whether the AI Observability app shows these events in an evaluation view, query them with DQL meanwhile:
+```
+fetch bizevents, from: now()-30m | filter event.type == "gen_ai.evaluation.result"
+| summarize results = count(), by: {`gen_ai.evaluation.score.label`}
+```
+The routing matcher of the `gov-demo business events` entry also matches `evaluation_event` for this.
 
 ## 4. OneAgent Python sensors
 
@@ -125,7 +133,7 @@ Limits: only the labelled forms above are masked. "my tax file number is 1234567
 
 ## 7. SLOs
 
-Six SLOs, defined in `docs/slos/*.yaml` and created with `dtctl create slo -f docs/slos/<name>.yaml`. Each one is a DQL timeseries that returns a percentage called `sli`, evaluated over the last 2 hours so a burn shows up quickly in a demo (the tenant allows one window per SLO, edit `timeframeFrom` to `now-7d` for a realistic window). All six indicators were tested as queries before they were created.
+Seven SLOs, defined in `docs/slos/*.yaml` and created with `dtctl create slo -f docs/slos/<name>.yaml`. Each one is a DQL timeseries that returns a percentage called `sli`, evaluated over the last 2 hours so a burn shows up quickly in a demo (the tenant allows one window per SLO, edit `timeframeFrom` to `now-7d` for a realistic window). All six indicators were tested as queries before they were created.
 
 | SLO | Indicator | Target (warning) | Burns in |
 |---|---|---|---|
@@ -135,6 +143,7 @@ Six SLOs, defined in `docs/slos/*.yaml` and created with `dtctl create slo -f do
 | Payment completion | Payments posted rather than failed (business events) | 99 (99.5) | monday_peak |
 | Assistant availability | Model calls without an error | 99 (99.5) | provider_outage |
 | Assistant latency under 2 s | Model calls under 2 s | 95 (97) | Only with the gateway latency toggle set to slow |
+| Assistant answers grounded | Answers whose synthetic groundedness evaluation passed (business events) | 95 (97) | ai_hallucination |
 
 The submission SLOs were in the original spec, but claim submission does not burn in `monday_peak`: the submit call only inserts a queue row and the slow work happens afterwards. The eligibility, payment and assistant availability SLOs were added because those are the ones the scenarios actually burn, and the submission SLOs stay as green controls.
 
@@ -157,11 +166,11 @@ On a machine that runs always-on, let the demo sit at baseline load for a day or
 
 ## 9. Dashboard
 
-Built: "Carer Support Portal demo" (id `fff6ca52-9dac-495c-91db-2f02b18cc977`, owner is the account that applied it), https://imb05402.apps.dynatrace.com/ui/apps/dynatrace.dashboards/dashboard/fff6ca52-9dac-495c-91db-2f02b18cc977. 32 tiles, 27 of them data tiles, all queries checked against the tenant before applying.
+Built: "Carer Support Portal demo" (id `fff6ca52-9dac-495c-91db-2f02b18cc977`, owner is the account that applied it), https://imb05402.apps.dynatrace.com/ui/apps/dynatrace.dashboards/dashboard/fff6ca52-9dac-495c-91db-2f02b18cc977. 35 tiles, 30 of them data tiles, all queries checked against the tenant before applying.
 
 - Headline numbers: claims submitted, payments posted, payments failed, average queue wait, tokens used, prompts blocked by guardrails.
 - Claims and payments: journey events by step, claims over time (paid in the good colour, failed in the critical colour), payment queue wait (average and p95), failed payments by error, server response time p95 by service.
-- AI assistant: tokens by type, chat completion latency (p50 and p95), guardrail outcome per chat, chat errors by type.
+- AI assistant: tokens by type, chat completion latency (p50 and p95), guardrail outcome per chat, chat errors by type, and the groundedness evaluations (pass rate, failed count, results over time).
 - Web experience (browser sessions, from RUM): Core Web Vitals as p75 (largest contentful paint, interaction to next paint, cumulative layout shift) plus time to first byte, journey completion rate and abandonment rate, the RUM funnel (sessions per step), the furthest step each session reached (the abandonment histogram), web vitals over time, and browser errors over time (JavaScript, HTTP 4xx and 5xx).
 - Change and problems: deployment events and the Davis problems on the demo services.
 
