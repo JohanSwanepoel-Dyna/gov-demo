@@ -13,11 +13,30 @@ make down
 
 Credentials for load tools are written to `db/out/credentials.csv` by the seed step (`make seed` re-runs it).
 
+## Browser load (Playwright)
+
+Real Chrome sessions for the browser side of the demo: the RUM funnel, completion and abandonment, web vitals, and the "Web experience" part of the dashboard. Locust is protocol level and has no browser, so those tiles stay empty until you run this.
+
+1. The portal must be reachable on `localhost:8080`. On Kubernetes: `kubectl port-forward -n gov-demo svc/web 8080:8080` (leave it running). Chrome must be installed.
+2. Run one or more profiles from this folder:
+
+```
+make browser-load PROFILE=completer SESSIONS=8      # full journey to a paid claim
+make browser-load PROFILE=abandoner SESSIONS=6      # leaves at the upload step
+make browser-load PROFILE=assistant SESSIONS=3      # opens the chat and clicks two prompts
+```
+
+3. Wait 3 to 4 minutes, then open the dashboard "Carer Support Portal demo" with the timeframe set to the last 30 minutes. Completion and abandonment need both completers and abandoners, run both.
+
+Options such as `CONCURRENCY=`, `BASE_URL=` (another port or machine) and `--headed` to watch the browser are in `load/browser/README.md`. The scenario script, the dashboard and the SLOs are covered in `docs/runbook.md`.
+
 ## Deploy to Kubernetes
 
 `make deploy` deploys the whole demo to the cluster your `kubectl` points at (preflight, local files, images, namespace and secrets, apply, wait). Local clusters such as Rancher Desktop use your own Docker images, any other cluster uses `make deploy REGISTRY=ghcr.io/you/gov-demo`. `make deploy DRYRUN=yes` shows the plan first, `make status` and `make undeploy` finish the job. Details, the Dynatrace side and troubleshooting are in `docs/deploy.md`.
 
 Ports: web 8080, claims-api 8000, llm-gateway 8100, payment-worker 8200, legacy-stub 8300, locust 8089.
+
+`make up` is the Docker Compose stack and it is local only: it has no OneAgent and no telemetry export, so it never sends anything to Dynatrace. Data in Dynatrace comes from the Kubernetes deployment (`make deploy`, see below). Both use port 8080 on your machine, so stop one of them (`make down` for Compose) or use a different port for the Kubernetes port-forward.
 
 ## Environment variables (root `.env`)
 
