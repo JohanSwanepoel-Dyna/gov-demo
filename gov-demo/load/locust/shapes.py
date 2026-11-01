@@ -12,18 +12,24 @@ PEAK_HOLD_S = int(os.environ.get("PEAK_HOLD_S", "600"))
 PEAK_DOWN_S = int(os.environ.get("PEAK_DOWN_S", "120"))
 ASSISTANT_USERS = int(os.environ.get("ASSISTANT_USERS", "3"))
 
-STATE = {"profile": os.environ.get("LOAD_PROFILE", "baseline"), "since": time.time()}
+DRAIN_S = 4  # seconds with zero users after a profile change, so the next profile starts with a fresh user mix
+STATE = {"profile": os.environ.get("LOAD_PROFILE", "baseline"), "since": time.time(), "drain_until": 0.0}
 USER_CLASSES = {}  # profile name -> user classes, filled in by locustfile.py
 
 
 def set_profile(name):
-    STATE["profile"], STATE["since"] = name, time.time()
+    """Switch profile. Locust keeps its running users when only the user class list changes, so after
+    assistant then baseline all users stayed assistant users and nobody created claims. Draining first fixes that."""
+    now = time.time()
+    STATE["profile"], STATE["drain_until"], STATE["since"] = name, now + DRAIN_S, now + DRAIN_S
 
 
 class ProfileShape(LoadTestShape):
     """Returns the user count for the active profile. Peak ramps up, holds, ramps down, then returns to baseline."""
 
     def tick(self):
+        if time.time() < STATE["drain_until"]:
+            return (0, 50)  # stop everyone quickly
         profile, t = STATE["profile"], time.time() - STATE["since"]
         classes = USER_CLASSES.get(profile)
 

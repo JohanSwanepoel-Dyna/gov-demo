@@ -240,6 +240,8 @@ Not checked in the UI: the Errors tab of AI Observability.
 | `dtctl` says the token refresh failed | Run `dtctl auth login`. Never run `dtctl` calls in parallel |
 | Port 8080 or 8089 refused | The port-forward died, start it again |
 | Locust shows 0 users | The last scenario was `reset` (no load). Run `baseline` |
+| No claims, business events or journey data, but spans and chat traffic flow | Locust was left running assistant users only (fixed: profiles now name their user classes). Check `POST /api/claims` against `POST /api/assistant` in the Locust stats. A restart of the Locust pod, `kubectl rollout restart -n gov-demo deploy/locust`, always gives a fresh mix |
+| Data in the cluster's Dynatrace but nothing from `make up` | `make up` is the Docker Compose stack. It has no OneAgent and no OTLP export, so it never sends anything to Dynatrace. The tenant is fed by the Kubernetes deployment (`make deploy`) |
 | Disk worries | `make disk` reports usage. Demo rows older than 6 hours are deleted every 15 minutes. `make prune` reclaims build cache |
 
 ## Known gaps

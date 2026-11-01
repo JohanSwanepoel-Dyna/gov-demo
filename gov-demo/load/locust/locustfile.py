@@ -111,7 +111,12 @@ class AssistantUser(Portal):
                   json={"conversation_id": self.conversation, "message": prompt}, timeout=60)
 
 
-shapes.USER_CLASSES["assistant"] = [AssistantUser]
+# Every profile names its user classes. Locust keeps the previous class list when a tick does not give one, so
+# after the assistant profile an implicit baseline kept running assistant users only and nobody created claims.
+shapes.USER_CLASSES.update({"baseline": [Completer, Abandoner, AssistantUser],
+                            "peak": [Completer, Abandoner, AssistantUser],
+                            "assistant": [AssistantUser],
+                            "none": [Completer, Abandoner, AssistantUser]})
 
 
 @events.init.add_listener
