@@ -32,6 +32,7 @@ class Portal(HttpUser):
         self.citizen, self.passcode = random.choice(CREDENTIALS)
         self.token = None
         self.login()
+        self.call("GET", "/api/home", "GET /api/home")  # the home page loads this right after sign in
 
     def login(self):
         with self.client.post("/api/login", json={"citizen_id": self.citizen, "passcode": self.passcode},

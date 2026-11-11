@@ -42,7 +42,8 @@ SESSIONS = {}  # token -> citizen id, in memory (resets on restart)
 
 
 @app.get("/healthz")
-def healthz(response: Response):
+async def healthz(response: Response):
+    # async so the probe does not wait for a worker thread, which are all busy when the legacy tier is slow.
     # TCP reachability only. A SELECT here would create a root database span on every probe.
     db = urlparse(os.environ["DATABASE_URL"])
     try:

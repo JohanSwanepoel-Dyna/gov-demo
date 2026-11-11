@@ -9,7 +9,7 @@ Fictional agency, fictional policy, synthetic data. Lab use only.
 1. Cluster healthy: `kubectl get pods -n gov-demo` (all Running) and `kubectl get dynakube -n dynatrace` (Running).
 2. Port-forwards (they die on a reboot): `kubectl port-forward -n gov-demo svc/web 8080:8080` and `kubectl port-forward -n gov-demo svc/locust 8089:8089`.
 3. Pick the starting point: `make scenario NAME=baseline` (steady load, prompts are recorded and masked so the AI Observability Prompts view fills). `make scenario NAME=prompts_off` stops the recording.
-4. Portal: http://localhost:8080. Sign in with any pair from `gov-demo/db/out/credentials.csv` (columns `citizen_id,passcode`, for example citizen 1). Avoid ids divisible by 20, they are non-residents and always ineligible.
+4. Portal: http://localhost:8080. Sign in with any pair from `gov-demo/db/out/credentials.csv` (columns `citizen_id,passcode`, for example citizen 1). Avoid ids divisible by 20, they are non-residents and always ineligible. After sign in you land on the DynaGov home page (your services and inbox); open the Carer Support tile to start a claim. The assistant is a collapsed bar at the bottom right: click it to open the chat.
 5. Locust: http://localhost:8089 shows the standing load.
 6. Dashboard: open "Carer Support Portal demo" (https://imb05402.apps.dynatrace.com/ui/apps/dynatrace.dashboards/dashboard/fff6ca52-9dac-495c-91db-2f02b18cc977) and set the timeframe to the last 2 hours. It is the one screen for the whole story, see below.
 7. Timing: data reaches the tenant 2 to 4 minutes after the action (logs a little later than spans). Open the views first, then act, then wait.
@@ -27,7 +27,7 @@ State you should know about: toggles live in memory. Restarting a pod returns th
 | monday_peak | `make scenario NAME=monday_peak` | Watch Locust ramp to 60 users | Slow legacy tier, queue growth, failed payments, problems | 5 min |
 | upload_dropoff | `make scenario NAME=upload_dropoff` then `make browser-load PROFILE=abandoner SESSIONS=6` | Run completers and abandoners | RUM funnel, drop-off at upload | 3 min |
 | ai_injection | `make scenario NAME=ai_injection` | Click "Prompt injection" | Leak of another citizen's data | 3 min |
-| ai_pii | `make scenario NAME=ai_pii` | Click "Message with a TFN", sign in | TFN in prompts and TFN and Medicare in logs | 4 min |
+| ai_pii | `make scenario NAME=ai_pii` | Open the Assistant, click "Message with a TFN", sign in | TFN in prompts and TFN and Medicare in logs | 4 min |
 | ai_cost_spike | `make scenario NAME=ai_cost_spike` | Click "Long answer" | Token and cost jump | 3 min |
 | ai_hallucination | `make scenario NAME=ai_hallucination` | Click "Check my eligibility" | Wrong amount and an invented clause | 3 min |
 | provider_outage | `make scenario NAME=provider_outage` | Send a few chat prompts | 503 errors, error rate | 3 min |
@@ -68,7 +68,7 @@ Start the slow-to-appear scenarios early and talk while the data arrives.
 
 ## baseline: one claim, one trace
 
-Run: `make scenario NAME=baseline`. In the portal, sign in and complete a claim (payment type, details with low income and 35 hours, upload `db/out/sample-document.txt`, submit). Watch the status reach "paid".
+Run: `make scenario NAME=baseline`. In the portal, sign in, open the Carer Support tile and complete a claim (payment type, details with low income and 35 hours, upload `db/out/sample-document.txt`, submit). Watch the status reach "paid".
 
 Show:
 - Distributed Traces, search for the `POST /api/claims/{claim_id}/submit` trace. One trace crosses `web` (Node, OneAgent), `claims-api` and its database calls (OpenTelemetry), the payment queue handover, `payment-worker` (OpenTelemetry) and the Java legacy stub (OneAgent). The queue row carries the W3C trace context, so the worker continues the same trace.
@@ -93,7 +93,7 @@ Caveats: the `web` spans are timestamped about 120 ms later than the claims-api 
 
 ## Prompts: AI Observability
 
-Run: `make scenario NAME=baseline`. In the portal chat, click "Check my eligibility", then "30 hours a week", then "Low income". The chat works by clicking: after each reply the assistant offers the next options.
+Run: `make scenario NAME=baseline`. In the portal, open the Assistant bar at the bottom right, then click "Check my eligibility", then "30 hours a week", then "Low income". The chat works by clicking: after each reply the assistant offers the next options.
 
 Show, in AI Observability:
 - Explorer: `claims-api` as the AI app, the `claims-assistant` agent, the model `gpt-4o-mini`, tokens and cost (cost is calculated for the mock model name).
@@ -181,7 +181,7 @@ Say: the detection is the gateway's guardrail (a list of known injection phrases
 
 ## ai_pii: identifiers in prompts and logs
 
-Run: `make scenario NAME=ai_pii` (this also records prompts and switches Locust to the assistant profile). In the chat click "Message with a TFN". Sign in again (the sign in log line carries the identifiers). The assistant answers politely and tells the user not to share a TFN, without echoing it.
+Run: `make scenario NAME=ai_pii` (prompts are already recorded by default, this adds identifiers to the logs and switches Locust to the assistant profile). Open the Assistant and click "Message with a TFN". Sign in again (the sign in log line carries the identifiers). The assistant answers politely and tells the user not to share a TFN, without echoing it.
 
 Show:
 - Prompts view and the chat span: the TFN `123456782` in `gen_ai.input.messages`.
