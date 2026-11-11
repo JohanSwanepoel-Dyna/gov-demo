@@ -15,7 +15,7 @@ What the demo needs in the Dynatrace tenant, and its status. The lab tenant is S
 | 7 | SLOs | Claim submission, eligibility, payment completion, assistant | Built, seven SLOs, see section 7 |
 | 8 | Davis anomaly detection tuning | A clean problem for the peak scenario | Decided not to tune, the SLOs carry the burn story (see section 8) |
 | 9 | Dashboard | Journey, payments, AI usage and cost, RUM funnel, change | Built, see section 9 |
-| 10 | Vulnerability detection of the old log4j | Security story | Not confirmed |
+| 10 | Vulnerability detection of the old log4j | Security story | Confirmed 2026-11-11 (needs the two settings objects in section 10) |
 
 ## 1. DynaKube
 
@@ -182,4 +182,27 @@ The dashboard is defined in code: `docs/dashboards/build_dashboard.py` writes `d
 
 ## 10. Security
 
-The legacy stub deliberately loads Log4j 2.14.1 (CVE-2021-44228), confirmed loaded at runtime. Whether the tenant flags it as a vulnerability is not confirmed: a DQL search of security events found nothing, which may be the wrong field names or runtime vulnerability analytics not being active under `applicationMonitoring`. Check Security, Vulnerabilities for `legacy-stub` in the UI. The stack must stay off the internet either way.
+The legacy stub deliberately loads Log4j 2.14.1 (CVE-2021-44228), confirmed loaded at runtime. The stack must stay off the internet.
+
+Runtime vulnerability analytics is off by default in a tenant, so nothing is flagged until it is switched on. Two settings objects do this, scoped to the demo:
+
+| File | Schema | What it does |
+|---|---|---|
+| `docs/security/tpv-rule-gov-demo.yaml` | `builtin:appsec.third-party-vulnerability-rule-settings` | Third-party detection on only where `k8s.namespace.name` equals `gov-demo` |
+| `docs/security/runtime-vulnerability-detection.yaml` | `builtin:appsec.runtime-vulnerability-detection` | Feature on, global third-party mode off, code-level detection off, Java technologies only |
+
+Both are tenant-wide settings (scope environment), so apply them deliberately and one `dtctl` call at a time. Apply the rule first, then the singleton:
+
+```
+dtctl apply -f docs/security/tpv-rule-gov-demo.yaml
+dtctl apply -f docs/security/runtime-vulnerability-detection.yaml
+kubectl rollout restart -n gov-demo deploy/legacy-stub     # the JVM re-reads the setting at start
+```
+
+Notes from applying them: the rule needs a `metadata` block, and the singleton rejects `enableDotNetRuntime`, `enableNodeJsRuntime` and `enablePythonRuntime` when the parent technology is off, and requires `globalMonitoringModeDotNet` and `globalMonitoringModeGo`. Enabling resource attribute rules switches the classic rules off (none existed here).
+
+Verified 2026-11-11: findings appear only for namespace `gov-demo` (102 distinct vulnerabilities in 24 hours, one namespace). `log4j-core` 2.14.1 is flagged ("Remote code injection in Log4j" and "Incomplete fix for Apache Log4j vulnerability", both CRITICAL), with Tomcat, Spring, Jackson and Logback findings for the Java services and `qs`, `body-parser`, `http-proxy-middleware` and `path-to-regexp` for the Node `web` service. The first findings took longer than 12 minutes to appear after the restart. Node findings appeared although the Node technology is switched off in the singleton, so the namespace rule seems to override the per-technology switch (not confirmed).
+
+Check it with DQL: `fetch security.events | filter event.type == "VULNERABILITY_FINDING" | summarize count(), by:{k8s.namespace.name, component.name}`. The CVE id is not matched by `vulnerability.cve_ids` in a query (field name unconfirmed), so look at the CVE in Security, Vulnerabilities.
+
+Roll back: set `enableRuntimeVulnerabilityDetection` to false and apply the singleton again, or delete both objects (neither existed before 2026-11-02).

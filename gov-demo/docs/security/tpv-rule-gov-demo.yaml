@@ -1,0 +1,16 @@
+# Third-party vulnerability rule: monitor only workloads in the gov-demo namespace.
+# Apply this first, then docs/security/runtime-vulnerability-detection.yaml (which turns the feature on and sets the global default to off).
+# Roll back by deleting this object in Settings, Application Security, Third-party vulnerability detection rules.
+schemaId: builtin:appsec.third-party-vulnerability-rule-settings
+scope: environment
+value:
+  enabled: true
+  ruleName: gov-demo namespace only
+  vulnerabilityDetectionControl:
+    monitoringMode: MONITORING_ON
+  resourceAttributeConditions:
+    - resourceAttributeKey: k8s.namespace.name
+      resourceAttributeValue: gov-demo
+      matcher: EQUALS
+  metadata:
+    comment: Carer Support Portal demo, only the gov-demo namespace is analysed
