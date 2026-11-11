@@ -1,4 +1,4 @@
-.PHONY: up down seed logs ps scenario browser-load secrets-init secrets-check images k8s-secrets k8s-render k8s-dry-run k8s-up k8s-down disk prune deploy undeploy status demo-arm demo-status demo-reset
+.PHONY: up down seed logs ps scenario browser-load secrets-init secrets-check images k8s-secrets k8s-render k8s-dry-run k8s-up k8s-down disk prune deploy undeploy status demo-arm demo-redeploy demo-status demo-reset
 
 up:
 	docker compose up -d --build --wait
@@ -88,6 +88,8 @@ status:
 # Agentic development demo (docs/agentic-demo.md). demo-reset discards an uncommitted fix to the eligibility engine.
 demo-arm:
 	scenarios/agentic_demo.sh arm
+demo-redeploy:
+	scenarios/agentic_demo.sh redeploy
 demo-status:
 	scenarios/agentic_demo.sh status
 demo-reset:

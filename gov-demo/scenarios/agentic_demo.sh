@@ -2,6 +2,7 @@
 # Arm, check or reset the agentic development demo (docs/agentic-demo.md).
 #
 #   scenarios/agentic_demo.sh arm      restore the committed eligibility engine, rebuild claims-api, switch to release v2
+#   scenarios/agentic_demo.sh redeploy rebuild claims-api from the working tree (the agent's fix) and switch back to release v2
 #   scenarios/agentic_demo.sh status   show whether the engine file is the committed one and which release is active
 #   scenarios/agentic_demo.sh reset    discard an agent's fix, rebuild claims-api, go back to release v1 and baseline load
 #
@@ -40,6 +41,13 @@ case "${1:-}" in
     make -s scenario NAME=bad_release
     echo; echo "Armed. The deployment event reaches Dynatrace in 1 to 2 minutes, errors and slow checks in 2 to 4."
     ;;
+  redeploy)
+    echo "kubectl context: $(kubectl config current-context)"
+    rebuild
+    step "Release v2 again, with the code in the working tree"
+    make -s scenario NAME=bad_release
+    echo; echo "Redeployed. Compare errors and latency after this point with the minutes before it."
+    ;;
   status)
     echo "release toggle: $(release)"
     if git diff --quiet -- "$FILE"; then echo "$FILE: as committed (the defect is present)"; else echo "$FILE: changed from the committed version:"; git diff --stat -- "$FILE"; fi
@@ -50,5 +58,5 @@ case "${1:-}" in
     step "Back to release v1 and baseline load"
     make -s scenario NAME=baseline
     ;;
-  *) sed -n '2,9p' "$0"; exit 2 ;;
+  *) sed -n '2,10p' "$0"; exit 2 ;;
 esac
