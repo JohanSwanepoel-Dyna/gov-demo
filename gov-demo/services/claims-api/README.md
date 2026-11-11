@@ -8,7 +8,7 @@
 | `LEGACY_URL` | http://legacy-stub:8300 | Legacy stub base URL |
 | `LEGACY_TIMEOUT_S` | 15 | Legacy call timeout |
 | `CONTROL_TOKEN` | none | Shared secret for the toggle API, sent as header `X-Demo-Control`. The API is disabled when unset |
-| `CAPTURE_CONTENT` | off | Initial value of the `capture_content` toggle. When on, `chat` spans record `gen_ai.input.messages` and `gen_ai.output.messages`, including any PII in prompts |
+| `CAPTURE_CONTENT` | on | Initial value of the `capture_content` toggle. When on, `chat` spans record `gen_ai.input.messages` and `gen_ai.output.messages`, including any PII in prompts |
 | `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE` | unset | Set to `delta` for Dynatrace histograms |
 
 Eligibility rules are in `eligibility.py`. All values are fictional.

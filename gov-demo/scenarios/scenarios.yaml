@@ -3,7 +3,7 @@
 # `load` is the Locust profile: baseline, peak, assistant or none. `browser` means Playwright load run separately, Locust stays at baseline.
 defaults:
   legacy-stub:    {mode: normal, pool_threads: 8}
-  claims-api:     {eligibility_release: v1, upload_fault: none, log_pii: "off", capture_content: "off"}
+  claims-api:     {eligibility_release: v1, upload_fault: none, log_pii: "off", capture_content: "on"}
   llm-gateway:    {latency: normal, provider_errors: none, provider_error_rate: 30, guardrails: "on", response_mode: grounded}
   payment-worker: {concurrency: 2, processing_delay_ms: 0}
 
@@ -33,9 +33,9 @@ scenarios:
       llm-gateway: {guardrails: "off"}
     load: assistant
   ai_pii:
-    description: Prompt capture and PII logging on. Log and span masking through OpenPipeline.
+    description: PII logging on (prompt capture is already on by default). Log and span masking through OpenPipeline.
     toggles:
-      claims-api: {capture_content: "on", log_pii: "on"}
+      claims-api: {log_pii: "on"}
     load: assistant
   ai_cost_spike:
     description: Verbose answers. Token and cost tracking.
@@ -52,10 +52,10 @@ scenarios:
     toggles:
       llm-gateway: {provider_errors: "503"}
     load: assistant
-  show_prompts:
-    description: Record prompts and answers so the AI Observability Prompts view fills. Not a fault scenario.
+  prompts_off:
+    description: Stop recording prompts and answers, the privacy-first setting. The Prompts view stops filling. Not a fault scenario.
     toggles:
-      claims-api: {capture_content: "on"}
+      claims-api: {capture_content: "off"}
     load: assistant
   reset:
     description: All defaults, no load.

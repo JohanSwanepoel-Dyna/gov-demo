@@ -86,7 +86,7 @@ def call_gateway(messages, conversation_id):
             # Azure OpenAI style content filter results, which the AI Observability guardrail tiles read.
             "gen_ai.prompt.prompt_filter_results": json.dumps(data.get("prompt_filter_results", [])),
             "gen_ai.completion.content_filter_results": json.dumps(choice.get("content_filter_results", {}))})
-        if toggles.STATE["capture_content"] == "on":  # opt-in: records prompts and any PII in them
+        if toggles.STATE["capture_content"] == "on":  # on by default so AI Observability shows the conversation, masked by the spans pipeline
             span.set_attributes({
                 "gen_ai.input.messages": json.dumps([to_parts(m) for m in messages]),
                 "gen_ai.output.messages": json.dumps([{**to_parts(choice["message"]), "finish_reason": choice["finish_reason"]}])})

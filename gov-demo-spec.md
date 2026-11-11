@@ -207,7 +207,7 @@ All services expose `GET /control/toggles` and `PUT /control/toggles` with JSON 
 | `llm-gateway` | `latency` | normal, slow | normal: 300-900 ms. slow: 6-12 s |
 | `llm-gateway` | `provider_errors`, `provider_error_rate` | none, 429, 503, and 0 to 100 | Percentage configurable, default 30% |
 | `llm-gateway` | `guardrails` | on, off | on: injection blocked. off: injection fails open and returns another citizen's claim summary from seed data |
-| `claims-api` | `capture_content` | on, off | on: populate `gen_ai.input.messages` and `gen_ai.output.messages` on the `chat` span, including any PII. The client decides what to record, so this toggle lives on `claims-api` |
+| `claims-api` | `capture_content` | on (default), off | on: populate `gen_ai.input.messages` and `gen_ai.output.messages` on the `chat` span, including any PII. The client decides what to record, so this toggle lives on `claims-api` |
 | `llm-gateway` | `response_mode` | grounded, hallucinated, verbose | hallucinated: wrong amount and a non-existent policy clause. verbose: long response, high token counts |
 | `payment-worker` | `concurrency`, `processing_delay_ms` | integer | Controls drain rate |
 
@@ -220,11 +220,11 @@ All services expose `GET /control/toggles` and `PUT /control/toggles` with JSON 
 | `bad_release` | `eligibility_release=v2_bad` | Steady medium | Deployment event correlation, problem on claims-api |
 | `upload_dropoff` | `upload_fault=slow` | Playwright abandoner plus completer | RUM funnel drop-off, Session Replay |
 | `ai_injection` | `guardrails=off` | Assistant user (injection prompts) | AI security signal, data exposure |
-| `ai_pii` | `capture_content=on`, `log_pii=on` | Assistant user (PII prompts) | Log and span masking via OpenPipeline |
+| `ai_pii` | `log_pii=on` (`capture_content` is on by default) | Assistant user (PII prompts) | Log and span masking via OpenPipeline |
 | `ai_cost_spike` | `response_mode=verbose` | Assistant user | Token and cost tracking |
 | `ai_hallucination` | `response_mode=hallucinated`, `guardrails=off` | Assistant user | Evaluation failures. Guardrails are off because the grounding check would otherwise block the wrong amount |
 | `provider_outage` | `provider_errors=503` | Assistant user | Error rate, dependency health |
-| `show_prompts` | `capture_content=on` | Assistant user | Prompts and answers fill the AI Observability Prompts view. Not a fault scenario |
+| `prompts_off` | `capture_content=off` | Assistant user | Prompts and answers stop being recorded, the privacy-first setting. Not a fault scenario |
 | `reset` | All defaults | None | Return to baseline |
 
 `run_scenario.py` takes a scenario name, calls each service's toggle API, and starts or switches the Locust profile through its control endpoint. It must be idempotent.
@@ -261,7 +261,7 @@ Dynatrace reads `gen_ai.*` attributes natively over OTLP with no transformation.
 | `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens` | Taken from the gateway response `usage`, which the gateway computes with a simple token estimator (whitespace split times a fixed factor). Verbose mode multiplies output |
 | `gen_ai.request.temperature`, `gen_ai.request.max_tokens` | Fixed values |
 | `gen_ai.conversation.id` | From `X-Conversation-Id` |
-| `gen_ai.input.messages`, `gen_ai.output.messages` | Only when `capture_content=on` (opt-in by design, a toggle on `claims-api`). Structured message format with text, tool_call and tool_call_response parts. Verified accepted by the AI Observability Prompts view |
+| `gen_ai.input.messages`, `gen_ai.output.messages` | Recorded while `capture_content=on` (the default since 2026-11-11, a toggle on `claims-api`; the spans pipeline masks identifiers). Structured message format with text, tool_call and tool_call_response parts. Verified accepted by the AI Observability Prompts view |
 | `gen_ai.prompt.prompt_filter_results`, `gen_ai.completion.content_filter_results` | JSON strings in the Azure OpenAI content filter shape, copied from the gateway response. These drive the provider-specific AI Observability guardrail tiles (verified: guardrail activations appear) |
 | Error handling | `error.type` on the span and on the duration metric when the gateway returns 429 or 503 (Phase 4) |
 
@@ -437,7 +437,7 @@ The stack runs continuously with load, so growth must be bounded:
 | 3 | Provider and model naming for the mock, and whether Dynatrace cost views compute cost for it | Unverified | Use a plausible provider and model name, label the mock clearly in the README. If cost is not calculated, compute cost from token counts in DQL |
 | 4 | Native guardrail span shape in the AI Observability guardrails view | Unverified. `gen_ai.guardrail.name` appears in Dynatrace attribute mappings, view requirements not confirmed | Build as specified in 8.2, adjust after viewing the tenant |
 | 5 | Transport and token scopes for deployment events and business events | Business events resolved: extracted from logs by OpenPipeline, no token. Deployment events (Phase 4) still need the events API and a token with `events.ingest`, to confirm | Decide the deployment event path in Phase 4 |
-| 6 | Runtime vulnerability detection of the chosen old library | Unverified | Test in phase 1. Swap library if not flagged |
+| 6 | Runtime vulnerability detection of the chosen old library | Verified 2026-11-11 | Not flagged by default: runtime vulnerability analytics is off in a tenant. With the scoped settings in `docs/security/` (namespace `gov-demo` only) Log4j 2.14.1 is flagged CRITICAL. See `dynatrace-config.md` section 10 |
 | 7 | RUM session id retrieval from the browser | Per Dynatrace conversation tracking documentation a session id accessor exists. Exact API not confirmed | Fall back to a generated UUID |
 | 8 | Lab node capacity for 7 standing containers plus Java | Not measured | Start with limits in section 11 and adjust |
 

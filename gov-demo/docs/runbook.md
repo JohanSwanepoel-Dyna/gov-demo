@@ -8,21 +8,21 @@ Fictional agency, fictional policy, synthetic data. Lab use only.
 
 1. Cluster healthy: `kubectl get pods -n gov-demo` (all Running) and `kubectl get dynakube -n dynatrace` (Running).
 2. Port-forwards (they die on a reboot): `kubectl port-forward -n gov-demo svc/web 8080:8080` and `kubectl port-forward -n gov-demo svc/locust 8089:8089`.
-3. Pick the starting point: `make scenario NAME=baseline` (steady load, prompts not recorded) or `make scenario NAME=show_prompts` (same, and prompts are recorded so the AI Observability Prompts view fills).
+3. Pick the starting point: `make scenario NAME=baseline` (steady load, prompts are recorded and masked so the AI Observability Prompts view fills). `make scenario NAME=prompts_off` stops the recording.
 4. Portal: http://localhost:8080. Sign in with any pair from `gov-demo/db/out/credentials.csv` (columns `citizen_id,passcode`, for example citizen 1). Avoid ids divisible by 20, they are non-residents and always ineligible.
 5. Locust: http://localhost:8089 shows the standing load.
 6. Dashboard: open "Carer Support Portal demo" (https://imb05402.apps.dynatrace.com/ui/apps/dynatrace.dashboards/dashboard/fff6ca52-9dac-495c-91db-2f02b18cc977) and set the timeframe to the last 2 hours. It is the one screen for the whole story, see below.
 7. Timing: data reaches the tenant 2 to 4 minutes after the action (logs a little later than spans). Open the views first, then act, then wait.
 8. If you query with `dtctl`, run one call at a time.
 
-State you should know about: toggles live in memory. Restarting a pod returns that service to its defaults. `make scenario NAME=reset` also stops the load and turns prompt recording off, so afterwards run `baseline` or `show_prompts`.
+State you should know about: toggles live in memory. Restarting a pod returns that service to its defaults. `make scenario NAME=reset` also stops the load, so afterwards run `baseline`.
 
 ## Cheat sheet
 
 | Scenario | Command | Do | Show | Wait |
 |---|---|---|---|---|
 | baseline | `make scenario NAME=baseline` | Run one claim | Trace across all services, business events, AI app | 3 min |
-| show_prompts | `make scenario NAME=show_prompts` | Click the chat chips | AI Observability, Prompts | 3 min |
+| baseline (prompts) | `make scenario NAME=baseline` | Click the chat chips | AI Observability, Prompts | 3 min |
 | bad_release | `make scenario NAME=bad_release` | Run claims as a citizen aged 45 to 54 | Deployment event, slower and failing eligibility | 2 min |
 | monday_peak | `make scenario NAME=monday_peak` | Watch Locust ramp to 60 users | Slow legacy tier, queue growth, failed payments, problems | 5 min |
 | upload_dropoff | `make scenario NAME=upload_dropoff` then `make browser-load PROFILE=abandoner SESSIONS=6` | Run completers and abandoners | RUM funnel, drop-off at upload | 3 min |
@@ -61,7 +61,7 @@ Seven SLOs ("Carer portal: ...", 2 hour window) show the damage as budget burn. 
 1. baseline: one claim, one trace (2 minutes).
 2. bad_release: the deployment event and the damage it causes (2 minutes).
 3. monday_peak: the legacy tier saturates and the queue grows (3 minutes).
-4. AI: show_prompts, then ai_injection and ai_pii (3 minutes).
+4. AI: baseline (prompts), then ai_injection and ai_pii (3 minutes).
 5. baseline to finish.
 
 Start the slow-to-appear scenarios early and talk while the data arrives.
@@ -91,9 +91,9 @@ fetch bizevents, from: now()-30m
 
 Caveats: the `web` spans are timestamped about 120 ms later than the claims-api spans below them (cause not found). OneAgent spans arrive before the OpenTelemetry spans, so a trace looks incomplete for the first minutes. The tenant has a second, unused RUM application called "Government Claims Process".
 
-## show_prompts: AI Observability
+## Prompts: AI Observability
 
-Run: `make scenario NAME=show_prompts`. In the portal chat, click "Check my eligibility", then "30 hours a week", then "Low income". The chat works by clicking: after each reply the assistant offers the next options.
+Run: `make scenario NAME=baseline`. In the portal chat, click "Check my eligibility", then "30 hours a week", then "Low income". The chat works by clicking: after each reply the assistant offers the next options.
 
 Show, in AI Observability:
 - Explorer: `claims-api` as the AI app, the `claims-assistant` agent, the model `gpt-4o-mini`, tokens and cost (cost is calculated for the mock model name).
@@ -168,7 +168,7 @@ Notes: each step is its own URL path (`/upload`, `/review`, ...), which is what 
 Run: `make scenario NAME=ai_injection`. In the chat click "Prompt injection". With guardrails off the assistant answers with another citizen's synthetic claim summary including a TFN. With guardrails on (baseline) the same prompt is blocked and flagged.
 
 Show:
-- Prompts view (needs `show_prompts` or `ai_pii` for recording): the injection prompt and the leaked answer. Compare with the blocked answer from baseline.
+- Prompts view (recorded by default): the injection prompt and the leaked answer. Compare with the blocked answer from baseline.
 - No filter annotations are returned when guardrails are off, so those requests stop counting as guardrail enabled.
 
 ```
@@ -251,7 +251,7 @@ Not checked in the UI: the Errors tab of AI Observability.
 |---|---|
 | Portal shows "not signed in" or returns to sign in | claims-api restarted, sessions are in memory. Sign in again |
 | A scenario seems to have vanished | A pod restarted and its toggles reset. Run the scenario again |
-| Prompts view stops filling | Prompt recording is off after a restart or `reset`. Run `make scenario NAME=show_prompts` |
+| Prompts view stops filling | Recording was turned off with `prompts_off`. Run `make scenario NAME=baseline` |
 | No data in the tenant | Wait 2 to 4 minutes. Logs lag spans. Then check the DynaKube is Running and the pods are injected |
 | `dtctl` says the token refresh failed | Run `dtctl auth login`. Never run `dtctl` calls in parallel |
 | Port 8080 or 8089 refused | The port-forward died, start it again |
@@ -264,7 +264,7 @@ Not checked in the UI: the Errors tab of AI Observability.
 
 - The duration tile in AI Observability misreads the unit (the metric value is correct).
 - Guardrail activation card and by-type chart stay at 0.
-- Runtime vulnerability detection of the old log4j in the legacy stub has not been confirmed (spec item 6). Check Security, Vulnerabilities for `legacy-stub`.
+- Vulnerability detection of the old log4j needs the two settings in `dynatrace-config.md` section 10. It works once they are applied (confirmed 2026-11-11), but the first findings take a few minutes after `legacy-stub` restarts. Check Security, Vulnerabilities, filtered to `gov-demo`.
 - Masking covers the labelled TFN and Medicare forms only. The SLO window is 2 hours, so burn lingers after a scenario.
 - Davis problems appear during the peak, late and fragmented, with no root cause on the stub. Decided not to tune, the SLOs carry the burn story.
 - Session Replay not verified.
