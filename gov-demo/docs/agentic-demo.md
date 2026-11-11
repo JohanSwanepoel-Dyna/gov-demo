@@ -28,7 +28,7 @@ The code does not say "bug" anywhere. The release flag is `eligibility_release` 
 | Step | Time | You do | Show |
 |---|---|---|---|
 | 1. Release | 1 min | `make demo-arm` (rebuilds `claims-api`, switches to release v2, steady load) | A "release v2" deployment event on `claims-api` 1 to 2 minutes later |
-| 2. Wait for data | 2 to 4 min | Talk about the setup | Data lags the action by 2 to 4 minutes |
+| 2. Wait for data | at least 5 min | Talk about the setup | Data lags the action by 2 to 4 minutes. Start the agent no sooner than 5 minutes after arming (see the cold test below) |
 | 3. Hand over | 1 min | Give the agent the prompt below | |
 | 4. Investigate | 3 to 4 min | Watch the agent work | Problems, then the failure step at the release, then the exception and stack trace |
 | 5. Fix | 1 min | The agent edits `eligibility.py` | A two line diff |
@@ -42,7 +42,7 @@ The code does not say "bug" anywhere. The release flag is `eligibility_release` 
 
 ### What a good investigation finds (queries run on 2026-11-11, all return data)
 
-1. What changed: `fetch events | filter event.type == "CUSTOM_DEPLOYMENT"` shows "eligibility-engine release v2", from v1 to v2.
+1. What changed: `fetch events, from:now()-1h | filter event.type == "CUSTOM_DEPLOYMENT" | fields timestamp, event.name, event.description, deployment.version, deployment.previous_version` shows "eligibility-engine release v2", from v1 to v2. (There is no `service.name` or `title` field on these events, the service is in `dt.source_entity`.)
 2. When it went wrong, per minute:
    ```
    fetch spans, from:now()-14m
@@ -51,7 +51,7 @@ The code does not say "bug" anywhere. The release flag is `eligibility_release` 
    | sort minute asc
    ```
    Before the release: about 115 to 135 ms and 0 failures. After: 660 to 755 ms and 9 to 17 failures a minute out of 44 to 50 checks.
-3. Why it fails: a failed server span carries the exception in `span.events` (type `TypeError`, message and stack trace, last application frame `/app/eligibility.py`, line 38, `_evaluate_v2`). The same traceback is in the logs (`contains(content, "NoneType")`).
+3. Why it fails: failed server spans have no `http.response.status_code`, so look at `span.events` (`fieldsAdd ev = toString(span.events)`). A failed server span carries the exception there (type `TypeError`, message and stack trace, last application frame `/app/eligibility.py`, line 38, `_evaluate_v2`). The same traceback is in the logs (`contains(content, "NoneType")`).
 4. Why it is slow: `fetch spans | filter span.name == "policy.load_rate_schedule" | summarize avg(duration)/1000000` gives 787 ms on average.
 5. Davis opened problems on its own: a "Failure rate increase" on `claims-api` one minute after the release, a "Response time degradation" four minutes after, and a failure rate problem on `web` with the known root cause placeholder "Requests to unmonitored hosts". See the caveats.
 
@@ -65,6 +65,18 @@ The code does not say "bug" anywhere. The release flag is `eligibility_release` 
 | After the fix (03:53 onward) | 112 to 118 | 0 |
 
 A citizen aged 45 to 54 (citizen 4) went from HTTP 500 to HTTP 200 in 0.15 s.
+
+## Cold test (2026-11-11)
+
+A fresh agent got the exact prompt above, with no access to this run sheet, the progress log or the scenario files. It found the right defect, made an equivalent fix (the missing `(45, 54, 1.0)` band and a cache for the schedule), redeployed with `make demo-redeploy` and showed zero failures afterwards. It took about 15 minutes, 6 of them waiting for data. I checked its numbers against Dynatrace myself and they match.
+
+What the test showed about the demo:
+
+- **It started too early.** The agent began about a minute after arming, so there was almost no data from the new run. Its "during" figures came from my earlier rehearsal, and its fix went in about two minutes after arming. The proof compared the fix against that earlier incident, not against the run it was fixing. Wait at least 5 minutes after arming.
+- **It did not find the exception in Dynatrace.** Failed spans have no status code, so it read the code and matched the 45 to 54 pattern instead. The exception and stack trace are on the span (`span.events`), which is now in the list above. If you want the agent to find it unaided, say so in the prompt or have it look at span events.
+- **Deployment events looked empty** until it dumped the JSON, because the fields it chose do not exist. The query above lists the ones that do.
+- **Several "release v2" events and re-arms** from repeated runs confused the timeline (it could not tell whether v2 stayed on). Reset and wait before a real showing so there is one clear release marker.
+- **Log search was noisy once.** It reported a flood of OpenTelemetry exporter timeouts in the ERROR logs. I could not reproduce that (no exporter errors in the last hour), so treat it as seen once and unexplained.
 
 ## Reset and repeat
 
