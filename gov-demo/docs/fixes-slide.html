@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Where the fixes landed</title>
+<style>
+  html,body { margin:0; background:#fff; }
+  .slide { width:1920px; height:1080px; }
+  svg { width:1920px; height:1080px; display:block; font-family: -apple-system,"Segoe UI",system-ui,sans-serif; }
+  .title { font-size:44px; font-weight:700; fill:#1c2430; } .subtitle { font-size:24px; fill:#5b6676; }
+  .leg { font-size:22px; fill:#1c2430; font-weight:600; } .leg2 { font-size:20px; fill:#5b6676; }
+  .zone { font-size:22px; font-weight:700; letter-spacing:.06em; fill:#5b6676; }
+  .nn { font-size:26px; font-weight:700; fill:#1c2430; } .ns { font-size:17px; fill:#5b6676; }
+  .edge { stroke:#8a94a6; stroke-width:3; }
+  .bn { font-size:17px; font-weight:700; fill:#fff; }
+  .c1 { font-size:19px; font-weight:700; fill:#1c2430; } .c2 { font-size:17px; fill:#4a5565; }
+  .st { font-size:28px; font-weight:700; fill:#fff; } .ss { font-size:19px; fill:#d5dbe5; }
+  .proof { font-size:20px; fill:#5b6676; } .proof2 { font-size:19px; font-weight:700; fill:#1c2430; }
+  .pf { font-size:42px; font-weight:800; fill:#1f7a4d; } .pfs { font-size:17px; fill:#4a5565; }
+</style></head>
+<body><div class="slide">
+<svg viewBox="0 0 1920 1080" role="img" aria-label="Architecture with the fixes made, by where they landed">
+<defs>
+  <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#8a94a6"/></marker>
+  <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1c2430"/></marker>
+</defs>
+<rect x="40" y="128" width="1840" height="560" rx="18" fill="#f3f6fb" stroke="#d7deea" stroke-width="2"/>
+<text x="68" y="168" class="zone">APPLICATION AND CLUSTER · code and manifest fixes</text>
+<rect x="40" y="706" width="1840" height="226" rx="18" fill="#f6f3fb" stroke="#ddd5ee" stroke-width="2"/>
+<text x="68" y="746" class="zone">DYNATRACE TENANT · settings and configuration fixes</text>
+<rect x="60" y="302" width="210" height="84" rx="12" fill="#fff" stroke="#8a94a6" stroke-width="3"/>
+<text x="165.0" y="339" class="nn" text-anchor="middle">Users</text>
+<text x="165.0" y="366" class="ns" text-anchor="middle">browser sessions</text>
+<rect x="60" y="442" width="210" height="84" rx="12" fill="#fff" stroke="#8a94a6" stroke-width="3"/>
+<text x="165.0" y="479" class="nn" text-anchor="middle">Locust</text>
+<text x="165.0" y="506" class="ns" text-anchor="middle">load generator</text>
+<rect x="360" y="372" width="210" height="84" rx="12" fill="#e8eef8" stroke="#3d5a99" stroke-width="3"/>
+<text x="465.0" y="409" class="nn" text-anchor="middle">web</text>
+<text x="465.0" y="436" class="ns" text-anchor="middle">Node, OneAgent</text>
+<rect x="680" y="372" width="210" height="84" rx="12" fill="#e8eef8" stroke="#3d5a99" stroke-width="3"/>
+<text x="785.0" y="409" class="nn" text-anchor="middle">claims-api</text>
+<text x="785.0" y="436" class="ns" text-anchor="middle">FastAPI, OpenTelemetry</text>
+<rect x="1060" y="250" width="210" height="84" rx="12" fill="#efe9f8" stroke="#6b4fa0" stroke-width="3"/>
+<text x="1165.0" y="287" class="nn" text-anchor="middle">llm-gateway</text>
+<text x="1165.0" y="314" class="ns" text-anchor="middle">mock model, guardrails</text>
+<rect x="1060" y="372" width="210" height="84" rx="12" fill="#fbeee0" stroke="#b5651d" stroke-width="3"/>
+<text x="1165.0" y="409" class="nn" text-anchor="middle">legacy-stub</text>
+<text x="1165.0" y="436" class="ns" text-anchor="middle">Java, old Log4j</text>
+<rect x="1060" y="504" width="210" height="84" rx="12" fill="#e6f3ee" stroke="#2f7d62" stroke-width="3"/>
+<text x="1165.0" y="541" class="nn" text-anchor="middle">PostgreSQL</text>
+<text x="1165.0" y="568" class="ns" text-anchor="middle">claims, citizens</text>
+<rect x="1360" y="504" width="250" height="84" rx="12" fill="#e8eef8" stroke="#3d5a99" stroke-width="3"/>
+<text x="1485.0" y="541" class="nn" text-anchor="middle">payment-worker</text>
+<text x="1485.0" y="568" class="ns" text-anchor="middle">queue consumer</text>
+<line x1="270" y1="344" x2="360" y2="400" class="edge" marker-end="url(#ah)"/>
+<line x1="270" y1="484" x2="360" y2="432" class="edge" marker-end="url(#ah)"/>
+<line x1="570" y1="414" x2="680" y2="414" class="edge" marker-end="url(#ah)"/>
+<line x1="890" y1="392" x2="1060" y2="300" class="edge" marker-end="url(#ah)"/>
+<line x1="890" y1="414" x2="1060" y2="414" class="edge" marker-end="url(#ah)"/>
+<line x1="890" y1="436" x2="1060" y2="546" class="edge" marker-end="url(#ah)"/>
+<line x1="1360" y1="546" x2="1270" y2="456" class="edge" marker-end="url(#ah)"/>
+<rect x="270" y="186" width="352" height="66" rx="10" fill="#fff" stroke="#6b4fa0" stroke-width="3"/>
+<circle cx="302" cy="219.0" r="19" fill="#6b4fa0"/>
+<text x="302" y="226.0" class="bn" text-anchor="middle">3</text>
+<text x="332" y="214" class="c1">RUM saw a single view</text>
+<text x="332" y="238" class="c2">History API routes, real step URLs</text>
+<rect x="270" y="262" width="352" height="66" rx="10" fill="#fff" stroke="#6b4fa0" stroke-width="3"/>
+<circle cx="302" cy="295.0" r="19" fill="#6b4fa0"/>
+<text x="302" y="302.0" class="bn" text-anchor="middle">5</text>
+<text x="332" y="290" class="c1">Every call named POST /</text>
+<text x="332" y="314" class="c2">One Express route per endpoint</text>
+<line x1="465" y1="328" x2="465" y2="372" stroke="#6b4fa0" stroke-width="2.5" stroke-dasharray="2 5" stroke-linecap="round"/>
+<rect x="430" y="500" width="352" height="66" rx="10" fill="#fff" stroke="#b26a00" stroke-width="3"/>
+<circle cx="462" cy="533.0" r="19" fill="#b26a00"/>
+<text x="462" y="540.0" class="bn" text-anchor="middle">15</text>
+<text x="492" y="528" class="c1">Blank page after deploy</text>
+<text x="492" y="552" class="c2">/api prefix also proxied /api.js</text>
+<rect x="430" y="580" width="352" height="66" rx="10" fill="#fff" stroke="#b26a00" stroke-width="3"/>
+<circle cx="462" cy="613.0" r="19" fill="#b26a00"/>
+<text x="462" y="620.0" class="bn" text-anchor="middle">16</text>
+<text x="492" y="608" class="c1">No sign out, input blocked</text>
+<text x="492" y="632" class="c2">Sign out, API-side validation</text>
+<line x1="465" y1="456" x2="465" y2="500" stroke="#b26a00" stroke-width="2.5" stroke-dasharray="2 5" stroke-linecap="round"/>
+<rect x="650" y="186" width="352" height="66" rx="10" fill="#fff" stroke="#6b4fa0" stroke-width="3"/>
+<circle cx="682" cy="219.0" r="19" fill="#6b4fa0"/>
+<text x="682" y="226.0" class="bn" text-anchor="middle">1</text>
+<text x="712" y="214" class="c1">No spans from Python services</text>
+<text x="712" y="238" class="c2">OpenTelemetry beside OneAgent</text>
+<rect x="650" y="262" width="352" height="66" rx="10" fill="#fff" stroke="#6b4fa0" stroke-width="3"/>
+<circle cx="682" cy="295.0" r="19" fill="#6b4fa0"/>
+<text x="682" y="302.0" class="bn" text-anchor="middle">2</text>
+<text x="712" y="290" class="c1">Wrong parent on the Java span</text>
+<text x="712" y="314" class="c2">Drop the @dt tracestate entry</text>
+<line x1="775" y1="328" x2="775" y2="372" stroke="#6b4fa0" stroke-width="2.5" stroke-dasharray="2 5" stroke-linecap="round"/>
+<rect x="1360" y="186" width="352" height="66" rx="10" fill="#fff" stroke="#2f5aa8" stroke-width="3"/>
+<circle cx="1392" cy="219.0" r="19" fill="#2f5aa8"/>
+<text x="1392" y="226.0" class="bn" text-anchor="middle">10</text>
+<text x="1422" y="214" class="c1">Probe starved under load</text>
+<text x="1422" y="238" class="c2">Health and control on port 8301</text>
+<rect x="1360" y="262" width="352" height="66" rx="10" fill="#fff" stroke="#2f5aa8" stroke-width="3"/>
+<circle cx="1392" cy="295.0" r="19" fill="#2f5aa8"/>
+<text x="1392" y="302.0" class="bn" text-anchor="middle">11</text>
+<text x="1422" y="290" class="c1">Pool resize returned HTTP 500</text>
+<text x="1422" y="314" class="c2">Lower the minimum first</text>
+<line x1="1270" y1="372" x2="1360" y2="219" stroke="#2f5aa8" stroke-width="2.5" stroke-dasharray="2 5" stroke-linecap="round"/>
+<line x1="1270" y1="380" x2="1360" y2="295" stroke="#2f5aa8" stroke-width="2.5" stroke-dasharray="2 5" stroke-linecap="round"/>
+<rect x="40" y="590" width="352" height="66" rx="10" fill="#fff" stroke="#b26a00" stroke-width="3"/>
+<circle cx="72" cy="623.0" r="19" fill="#b26a00"/>
+<text x="72" y="630.0" class="bn" text-anchor="middle">8</text>
+<text x="102" y="618" class="c1">Claim traffic vanished</text>
+<text x="102" y="642" class="c2">User classes named per profile</text>
+<line x1="165" y1="526" x2="165" y2="590" stroke="#b26a00" stroke-width="2.5" stroke-dasharray="2 5" stroke-linecap="round"/>
+<rect x="70" y="770" width="352" height="66" rx="10" fill="#fff" stroke="#6b4fa0" stroke-width="3"/>
+<circle cx="102" cy="803.0" r="19" fill="#6b4fa0"/>
+<text x="102" y="810.0" class="bn" text-anchor="middle">4</text>
+<text x="132" y="798" class="c1">Log4j never flagged</text>
+<text x="132" y="822" class="c2">Runtime analytics, gov-demo only</text>
+<rect x="690" y="770" width="352" height="66" rx="10" fill="#fff" stroke="#2f5aa8" stroke-width="3"/>
+<circle cx="722" cy="803.0" r="19" fill="#2f5aa8"/>
+<text x="722" y="810.0" class="bn" text-anchor="middle">9</text>
+<text x="752" y="798" class="c1">Masking missed digits</text>
+<text x="752" y="822" class="c2">Label-anchored patterns, 0 in clear</text>
+<rect x="1310" y="770" width="352" height="66" rx="10" fill="#fff" stroke="#2f5aa8" stroke-width="3"/>
+<circle cx="1342" cy="803.0" r="19" fill="#2f5aa8"/>
+<text x="1342" y="810.0" class="bn" text-anchor="middle">14</text>
+<text x="1372" y="798" class="c1">Pipeline apply rejected</text>
+<text x="1372" y="822" class="c2">matchesPhrase, parse JSON first</text>
+<rect x="70" y="852" width="352" height="66" rx="10" fill="#fff" stroke="#2f5aa8" stroke-width="3"/>
+<circle cx="102" cy="885.0" r="19" fill="#2f5aa8"/>
+<text x="102" y="892.0" class="bn" text-anchor="middle">12</text>
+<text x="132" y="880" class="c1">Submission SLOs never burned</text>
+<text x="132" y="904" class="c2">Three SLOs that do</text>
+<rect x="690" y="852" width="352" height="66" rx="10" fill="#fff" stroke="#2f5aa8" stroke-width="3"/>
+<circle cx="722" cy="885.0" r="19" fill="#2f5aa8"/>
+<text x="722" y="892.0" class="bn" text-anchor="middle">13</text>
+<text x="752" y="880" class="c1">Dashboard tile misled</text>
+<text x="752" y="904" class="c2">Furthest step reached per session</text>
+<rect x="1310" y="852" width="352" height="66" rx="10" fill="#fff" stroke="#6b4fa0" stroke-width="3" stroke-dasharray="7 5"/>
+<circle cx="1342" cy="885.0" r="19" fill="#6b4fa0"/>
+<text x="1342" y="892.0" class="bn" text-anchor="middle">6 7</text>
+<text x="1372" y="880" class="c1">Davis late, unmonitored hosts</text>
+<text x="1372" y="904" class="c2">Accepted: SLOs carry the story</text>
+<text x="60" y="68" class="title">17 issues found and fixed while building with an agent</text>
+<text x="60" y="106" class="subtitle">Where each fix landed. Numbers match the build report.</text>
+<rect x="1170" y="40" width="22" height="22" rx="5" fill="#6b4fa0"/>
+<text x="1202" y="58" class="leg">Dynatrace data 6</text>
+<rect x="1400" y="40" width="22" height="22" rx="5" fill="#2f5aa8"/>
+<text x="1432" y="58" class="leg">Hands-on test 7</text>
+<rect x="1620" y="40" width="22" height="22" rx="5" fill="#b26a00"/>
+<text x="1652" y="58" class="leg">User in the UI 4</text>
+<text x="1170" y="104" class="leg2">15 fixed · 2 accepted (dashed) · How found is a judgement call</text>
+<rect x="60" y="952" width="340" height="96" rx="14" fill="#1c2430"/>
+<text x="84" y="992" class="st">1  Observe</text>
+<text x="84" y="1026" class="ss">traces, logs, RUM, security</text>
+<line x1="404" y1="1000" x2="444" y2="1000" stroke="#1c2430" stroke-width="4" marker-end="url(#ah2)"/>
+<rect x="444" y="952" width="340" height="96" rx="14" fill="#1c2430"/>
+<text x="468" y="992" class="st">2  Diagnose</text>
+<text x="468" y="1026" class="ss">DQL, one dtctl call at a time</text>
+<line x1="788" y1="1000" x2="828" y2="1000" stroke="#1c2430" stroke-width="4" marker-end="url(#ah2)"/>
+<rect x="828" y="952" width="340" height="96" rx="14" fill="#1c2430"/>
+<text x="852" y="992" class="st">3  Fix</text>
+<text x="852" y="1026" class="ss">code, manifest or setting</text>
+<line x1="1172" y1="1000" x2="1212" y2="1000" stroke="#1c2430" stroke-width="4" marker-end="url(#ah2)"/>
+<rect x="1212" y="952" width="340" height="96" rx="14" fill="#1c2430"/>
+<text x="1236" y="992" class="st">4  Verify</text>
+<text x="1236" y="1026" class="ss">same data, after the change</text>
+<circle cx="760" cy="966" r="19" fill="#2f5aa8" stroke="#fff" stroke-width="3"/>
+<text x="760" y="973" class="bn" text-anchor="middle">17</text>
+<rect x="1600" y="952" width="280" height="96" rx="14" fill="#fff" stroke="#1f7a4d" stroke-width="3"/>
+<text x="1620" y="984" class="proof">Last live run</text>
+<text x="1620" y="1010" class="proof2">9 to 17 failures a minute</text>
+<text x="1620" y="1036" class="proof2">to 0, 700 ms to 115 ms</text>
+</svg></div></body></html>
