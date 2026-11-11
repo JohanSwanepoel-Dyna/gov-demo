@@ -34,8 +34,10 @@ async function signIn(page, c, steps) {
   await page.getByLabel("Citizen ID").fill(String(c.id));
   await page.getByLabel("Passcode").fill(c.pc);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await page.getByLabel("Payment type").waitFor();
+  await page.getByRole("heading", { name: /^Good (morning|afternoon|evening)/ }).waitFor();
   steps.push("login");
+  await page.getByRole("link", { name: /Carer Support/ }).first().click();
+  await page.getByLabel("Payment type").waitFor();
 }
 
 // Login to the upload step. Returns false when the claim is not eligible.
@@ -86,6 +88,7 @@ const journeys = {
   async assistant(page, c, steps) {
     await signIn(page, c, steps);
     await page.locator(".chat").waitFor();
+    if (!(await page.locator(".chat-body").isVisible())) await page.locator(".chat-toggle").click();  // collapsed by default
     for (const label of ["Quick check: 35 hours, low income", "Documents"]) {
       const before = await page.locator(".chat-bot").count();
       await think(page);

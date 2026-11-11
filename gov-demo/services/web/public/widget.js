@@ -70,11 +70,16 @@ function build() {
     h("div", { class: "chat-chips", "aria-label": "Demo prompts" }, DEMO_PROMPTS.map(chip)),
     h("p", { class: "chat-chips-label" }, "Or type your own"),
     input, h("button", { type: "submit" }, "Send"));
-  const toggle = h("button", { class: "chat-toggle", type: "button", onclick: () => { body.hidden = !body.hidden; } }, "Assistant");
+  // Collapsed by default so it does not cover the page. The choice is remembered for the session.
+  body.hidden = sessionStorage.getItem("chatOpen") !== "1";
+  const toggle = h("button", { class: "chat-toggle", type: "button", onclick: () => {
+    body.hidden = !body.hidden;
+    sessionStorage.setItem("chatOpen", body.hidden ? "0" : "1");
+  } }, "Assistant");
   return h("aside", { class: "chat", "aria-label": "Assistant" }, toggle, body);
 }
 
-// Show the assistant, open, only while signed in.
+// Show the assistant (collapsed until opened) only while signed in.
 export function syncWidget() {
   if (!token()) { panel?.remove(); panel = null; return; }
   if (!panel) { panel = build(); document.body.append(panel); }

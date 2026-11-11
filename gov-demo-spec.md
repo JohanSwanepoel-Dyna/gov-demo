@@ -126,6 +126,7 @@ Seed script generates citizens and prints a CSV of usable login credentials for 
 | Method and path | Purpose | Notes |
 |---|---|---|
 | `POST /api/login` | Identity module. Body: citizen id, passcode | Returns session token. If `step_up` condition met, returns `step_up_required` |
+| `GET /api/home` | Citizen name and inbox for the home and inbox pages | Notices from other agencies are synthetic, notices about submitted claims come from the claims table. Needs a session token |
 | `POST /api/login/step-up` | Second factor stub (fixed code) | Adds an extra span and a latency slice |
 | `POST /api/claims` | Create draft | Emits business event `claim.draft_created` |
 | `POST /api/claims/{id}/eligibility` | Body: income_band, caring_hours. Age comes from the citizen record, residency from the legacy lookup. Run rules and legacy lookup | Calls `legacy-stub` synchronously. Emits `claim.eligibility_checked` |
@@ -184,11 +185,12 @@ Assistant tool loop (owned by `claims-api`):
 
 ### 6.5 `web`
 
-- Pages: login, step-up, payment type selection, claim details, eligibility result, document upload, review and submit, status, assistant widget (persistent bottom-right).
+- The portal shell is called DynaGov (a fictional citizen portal, not a real brand). Header with navigation (Home, Services, Inbox with an unread count), the citizen's name and a Sign out button.
+- Pages: login, home (greeting, five linked services of which only Carer Support is live, the latest inbox messages), inbox, then the Carer Support steps: payment type selection, claim details, eligibility result, document upload, review and submit, status. Step-up is not built. Assistant widget bottom-right, collapsed until opened (the choice is kept for the session).
 - Each step is a distinct URL path (`/login`, `/payment-type`, `/details`, `/eligibility`, `/upload`, `/review`, `/status`) using History API routing, and `web` serves the single page app for all of them. Hash routes were tried first and RUM recorded a single view `/` for the whole journey, so they do not work for funnels.
 - RUM comes from OneAgent automatic injection into the HTML served by `web` (verified on the lab cluster). No snippet URL or variable is needed. The app runs without RUM where OneAgent is absent (Compose). Injection only happens for browser-like requests, so curl does not show it.
 - The assistant works by clicking alone: after every reply the widget shows the assistant's suggested replies as buttons that change with the conversation, with a free text box as a secondary option. The three labelled demo prompts stay on screen at all times.
-- Assistant widget opens with a greeting and one-click prompts for demonstrations: three normal prompts (eligibility, documents, payment timing) and three labelled demo prompts (prompt injection, a message with a synthetic TFN, a long answer) that mirror the assistant prompts used for load generation.
+- Assistant widget, once opened, shows a greeting and one-click prompts for demonstrations: three normal prompts (eligibility, documents, payment timing) and three labelled demo prompts (prompt injection, a message with a synthetic TFN, a long answer) that mirror the assistant prompts used for load generation.
 - Assistant widget generates a conversation id per browser session (use the RUM session id if the RUM API exposes it, else a UUID) and sends it in the request body and an `X-Conversation-Id` header.
 - Client-side custom action names for each step (for example `step_upload`), to make funnel definition easy. Use `id = dtrum.enterAction(name, "custom")` then `dtrum.leaveAction(id)`. Verified on the lab tenant (new RUM experience): the call succeeds but these classic custom actions are not stored in `user.events`, so the funnel is built from views (one per URL path) and RUM's automatic actions (`click on button on /upload` and so on). The call is kept for tenants that record them.
 - Express proxies `/api/*` and forwards trace headers untouched.

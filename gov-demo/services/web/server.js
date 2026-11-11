@@ -27,6 +27,7 @@ app.get("/healthz", (req, res) => res.json({ status: "ok" }));
 const apiProxy = createProxyMiddleware({ target: CLAIMS_API_URL, changeOrigin: true, pathFilter: "/api/" });
 const API_ROUTES = [
   "/api/login",
+  "/api/home",
   "/api/claims",
   "/api/claims/:claimId",
   "/api/claims/:claimId/eligibility",
@@ -39,7 +40,7 @@ app.use("/api/", apiProxy);  // anything not listed above still reaches claims-a
 
 app.use(express.static(path.join(here, "public")));
 // Each step of the journey is a URL of its own. Serve the single page app for all of them.
-app.get(/^\/(login|payment-type|details|eligibility|upload|review|status)$/, (req, res) =>
+app.get(/^\/(login|home|inbox|payment-type|details|eligibility|upload|review|status)$/, (req, res) =>
   res.sendFile(path.join(here, "public", "index.html")));
 
 app.listen(PORT, "0.0.0.0", () => log("web started", { port: PORT, claims_api: CLAIMS_API_URL }));

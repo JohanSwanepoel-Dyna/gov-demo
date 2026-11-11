@@ -23,6 +23,7 @@ import assistant
 import eligibility
 import legacy
 import toggles
+from home import build_home
 from db import connect
 from logsetup import setup
 from telemetry import setup_tracing
@@ -92,6 +93,12 @@ def login(body: Login):
     SESSIONS[token] = body.citizen_id
     log.info("login ok", extra={"fields": {"citizen_id": body.citizen_id, **pii_fields(body.citizen_id)}})
     return {"token": token}
+
+
+@app.get("/api/home")
+def home(citizen_id: int = Depends(current_citizen)):
+    with connect() as conn:
+        return build_home(conn, citizen_id)
 
 
 class NewClaim(BaseModel):
