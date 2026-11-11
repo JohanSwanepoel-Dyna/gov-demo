@@ -1,4 +1,4 @@
-.PHONY: up down seed logs ps scenario browser-load secrets-init secrets-check images k8s-secrets k8s-render k8s-dry-run k8s-up k8s-down disk prune deploy undeploy status
+.PHONY: up down seed logs ps scenario browser-load secrets-init secrets-check images k8s-secrets k8s-render k8s-dry-run k8s-up k8s-down disk prune deploy undeploy status demo-arm demo-status demo-reset
 
 up:
 	docker compose up -d --build --wait
@@ -84,3 +84,11 @@ undeploy:
 
 status:
 	@kubectl get pods,svc,cronjob -n gov-demo; echo; kubectl get dynakube -A 2>/dev/null || true
+
+# Agentic development demo (docs/agentic-demo.md). demo-reset discards an uncommitted fix to the eligibility engine.
+demo-arm:
+	scenarios/agentic_demo.sh arm
+demo-status:
+	scenarios/agentic_demo.sh status
+demo-reset:
+	scenarios/agentic_demo.sh reset

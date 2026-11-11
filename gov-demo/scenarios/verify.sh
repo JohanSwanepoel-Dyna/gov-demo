@@ -37,8 +37,8 @@ check "monday_peak: worker concurrency 1" "$(kubectl exec -n $NS deploy/claims-a
 
 scn bad_release
 CM=$(new_claim "$TM"); t=$(date +%s.%N)
-wrong=0; for i in 1 2 3 4 5 6; do r=$(elig "$TM" "$CM"); echo "$r" | grep -q '"decision":"ineligible"' && wrong=1; done
-check "bad_release: wrong decision for age 45 to 54 (citizen $MID) or errors" "$([ $wrong = 1 ] && echo ok || echo "$r")"
+r=$(elig "$TM" "$CM")
+check "bad_release: eligibility fails (HTTP 500) for age 45 to 54 (citizen $MID)" "$(echo "$r" | grep -q '|500$' && echo ok || echo "$r")"
 check "bad_release: deployment event line logged" "$(kubectl logs -n $NS deploy/claims-api -c claims-api --tail=200 | grep -q '"deployment_event": true' && echo ok || echo no)"
 
 scn upload_dropoff

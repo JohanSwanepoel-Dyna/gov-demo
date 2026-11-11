@@ -114,10 +114,10 @@ Caveats: the "Overall guardrail activation" card and the activation-by-type char
 
 ## bad_release: deployment event and a bad eligibility engine
 
-Run: `make scenario NAME=bad_release`. Eligibility becomes 0.4 to 1.2 s slower, about 10 percent of checks fail, and citizens aged 45 to 54 get a wrong decision (ineligible with INCOME_TOO_HIGH). Citizen 4 is in that band. Run a claim as citizen 4 (see credentials.csv).
+Run: `make scenario NAME=bad_release`. Eligibility becomes 0.4 to 1.2 s slower (a rate schedule read on every check) and fails with a server error for citizens aged 45 to 54, because release 2's schedule has no band for them. Find a citizen in that band by date of birth (the verify script does this) and run a claim. The agentic version of this story, where an agent investigates and fixes it, is in `docs/agentic-demo.md`.
 
 Show:
-- A `CUSTOM_DEPLOYMENT` event named "eligibility-engine release v2_bad" on the claims-api service, 1 to 2 minutes after the switch. It comes from a log line turned into an event by OpenPipeline, no token involved.
+- A `CUSTOM_DEPLOYMENT` event named "eligibility-engine release v2" on the claims-api service, 1 to 2 minutes after the switch. It comes from a log line turned into an event by OpenPipeline, no token involved.
 - Service claims-api: slower eligibility, errors.
 
 ```

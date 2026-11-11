@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build report</title>
+<style>
+  :root { --bg:#f7f8fa; --card:#fff; --ink:#1c2430; --muted:#5b6676; --edge:#d5dbe5; --dt:#6b4fa0; --test:#2f5aa8; --user:#9a6700; --ok:#1f7a4d; --acc:#6b7280; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#14181f; --card:#1c222c; --ink:#e8ecf2; --muted:#a2adbd; --edge:#38414f; --dt:#b6a0ee; --test:#8db0ff; --user:#e5b93c; --ok:#6cc79a; --acc:#a2adbd; } }
+  :root[data-theme="dark"] { --bg:#14181f; --card:#1c222c; --ink:#e8ecf2; --muted:#a2adbd; --edge:#38414f; --dt:#b6a0ee; --test:#8db0ff; --user:#e5b93c; --ok:#6cc79a; --acc:#a2adbd; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  main { max-width:980px; margin:0 auto; padding:24px 16px 56px; }
+  h1 { font-size:1.6rem; margin:0 0 4px; } h2 { font-size:1.12rem; margin:30px 0 10px; }
+  .sub { color:var(--muted); margin:0 0 18px; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
+  .stat { background:var(--card); border:1px solid var(--edge); border-radius:10px; padding:12px 14px; }
+  .stat b { display:block; font-size:1.8rem; line-height:1.1; } .stat span { color:var(--muted); font-size:13px; }
+  .bar { display:flex; height:12px; border-radius:6px; overflow:hidden; margin:14px 0 4px; gap:2px; }
+  .bar i { display:block; } .b-dt { background:var(--dt); } .b-test { background:var(--test); } .b-user { background:var(--user); }
+  .legend { display:flex; flex-wrap:wrap; gap:14px; font-size:13px; color:var(--muted); }
+  .legend span::before { content:""; display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; }
+  .legend .l-dt::before { background:var(--dt); } .legend .l-test::before { background:var(--test); } .legend .l-user::before { background:var(--user); }
+  .filters { display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 14px; }
+  .chip { font:inherit; font-size:13px; color:var(--ink); background:var(--card); border:1px solid var(--edge); border-radius:999px; padding:4px 12px; cursor:pointer; }
+  .chip.on { border-color:var(--ink); font-weight:600; }
+  .card { background:var(--card); border:1px solid var(--edge); border-radius:10px; padding:14px 16px; }
+  .grid { display:grid; gap:12px; }
+  .head { display:flex; align-items:center; gap:10px; } .head h3 { margin:0; font-size:1rem; }
+  .num { flex:none; width:26px; height:26px; border-radius:50%; background:var(--ink); color:var(--bg); font-size:12px; font-weight:700; display:grid; place-items:center; }
+  .tags { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:8px 0 6px 36px; }
+  .tag { font-size:11px; font-weight:600; letter-spacing:.03em; text-transform:uppercase; border:1px solid currentColor; border-radius:4px; padding:0 6px; }
+  .f-dt { color:var(--dt); } .f-test { color:var(--test); } .f-user { color:var(--user); }
+  .area { color:var(--muted); } .st-fixed { color:var(--ok); } .st-accepted { color:var(--acc); }
+  .date { font-size:12px; color:var(--muted); margin-left:4px; }
+  dl { margin:0 0 0 36px; display:grid; grid-template-columns:150px 1fr; gap:4px 12px; font-size:14px; }
+  dt { color:var(--muted); } dd { margin:0; }
+  ul { margin:6px 0 0; padding-left:20px; } li { margin:3px 0; }
+  .hidden { display:none; }
+  .foot { color:var(--muted); font-size:13px; margin-top:26px; }
+  @media (max-width:640px) { dl { grid-template-columns:1fr; margin-left:0; } .tags { margin-left:0; } dt { margin-top:6px; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Building the Carer Support Portal with an agent</h1>
+  <p class="sub">What went wrong along the way, how it was found and what fixed it. Drawn from the build log, 30 October to 11 November 2026. Fictional agency and synthetic data.</p>
+
+  <div class="stats">
+    <div class="stat"><b>17</b><span>issues found and recorded</span></div>
+    <div class="stat"><b>15</b><span>fixed and verified</span></div>
+    <div class="stat"><b>2</b><span>accepted, not changed</span></div>
+    <div class="stat"><b>6</b><span>found by reading Dynatrace data</span></div>
+  </div>
+  <div class="bar" role="img" aria-label="Issues by how they were found: 6 Dynatrace data, 7 hands-on test, 4 user in the UI">
+    <i class="b-dt" style="flex:6"></i><i class="b-test" style="flex:7"></i><i class="b-user" style="flex:4"></i>
+  </div>
+  <div class="legend"><span class="l-dt">Dynatrace data 6</span><span class="l-test">Hands-on test 7</span><span class="l-user">User in the UI 4</span></div>
+  <p class="sub" style="margin-top:8px">How an issue was found is a judgement call. Several had more than one source, and the label is the first one that exposed it.</p>
+
+  <h2>Issues</h2>
+  <div class="filters" role="group" aria-label="Filter by how the issue was found"><button class="chip on" data-filter="all">All 17</button><button class="chip" data-filter="dt">Dynatrace data 6</button><button class="chip" data-filter="test">Hands-on test 7</button><button class="chip" data-filter="user">User in the UI 4</button></div>
+  <div class="grid">
+<article class="card issue" data-found="dt" id="i1">
+  <div class="head"><span class="num">1</span><h3>No spans from the Python services</h3></div>
+  <div class="tags"><span class="tag f-dt">Dynatrace data</span><span class="tag area">Telemetry</span><span class="tag st-fixed">Fixed</span><span class="date">30 Oct</span></div>
+  <dl>
+    <dt>What happened</dt><dd>Traces showed only web and legacy-stub. claims-api, payment-worker and llm-gateway were missing.</dd>
+    <dt>What the data showed</dt><dd>DQL: logs from all 8 workloads reached the tenant but spans came only from the Node and Java services. In the claims-api pod the agent was preloaded but created no Python runtime.</dd>
+    <dt>Cause</dt><dd>Likely: the OneAgent FastAPI, Starlette and psycopg2 sensors are off in the tenant and the app uses psycopg 3. Not confirmed.</dd>
+    <dt>Fix and proof</dt><dd>OpenTelemetry for the Python services alongside OneAgent for Node and Java, through the in-cluster telemetry-ingest collector.</dd>
+  </dl>
+</article>
+<article class="card issue" data-found="dt" id="i2">
+  <div class="head"><span class="num">2</span><h3>Wrong parent on the legacy-stub span</h3></div>
+  <div class="tags"><span class="tag f-dt">Dynatrace data</span><span class="tag area">Telemetry</span><span class="tag st-fixed">Fixed</span><span class="date">30 Oct</span></div>
+  <dl>
+    <dt>What happened</dt><dd>The Java span hung under the web client span instead of the calling service, and web timestamps ran about 120 ms late.</dd>
+    <dt>What the data showed</dt><dd>590 of 590 queue rows carried a single Dynatrace entry in tracestate (@dt=fw4;...).</dd>
+    <dt>Cause</dt><dd>OneAgent on the Java side read the Dynatrace tracestate entry that the OpenTelemetry services passed through unchanged (hypothesis, verified by the fix).</dd>
+    <dt>Fix and proof</dt><dd>A propagator in the three Python services drops tracestate entries ending in @dt. Verified: POST /legacy/CustomerService is parented to the claims-api client span, POST /legacy/PaymentService to the payment-worker client span.</dd>
+  </dl>
+</article>
+<article class="card issue" data-found="dt" id="i3">
+  <div class="head"><span class="num">3</span><h3>RUM saw one view, so no funnel was possible</h3></div>
+  <div class="tags"><span class="tag f-dt">Dynatrace data</span><span class="tag area">Web experience</span><span class="tag st-fixed">Fixed</span><span class="date">30 Oct</span></div>
+  <dl>
+    <dt>What happened</dt><dd>455 events and 17 sessions arrived, every session with a single view and no step actions.</dd>
+    <dt>What the data showed</dt><dd>Checked user.events after building the Playwright load. Funnel after the fix: 12, 12, 12, 12, 8, 5, 5 sessions per step.</dd>
+    <dt>Cause</dt><dd>The single page app used hash routes, which RUM does not treat as views. A try/catch also hid a bug: leaveAction was called on the wrong object.</dd>
+    <dt>Fix and proof</dt><dd>History API routing with real paths and an Express fallback for the seven step URLs, and a corrected enterAction/leaveAction call.</dd>
+  </dl>
+</article>
+<article class="card issue" data-found="dt" id="i4">
+  <div class="head"><span class="num">4</span><h3>Vulnerabilities were never flagged</h3></div>
+  <div class="tags"><span class="tag f-dt">Dynatrace data</span><span class="tag area">Security</span><span class="tag st-fixed">Fixed</span><span class="date">11 Nov</span></div>
+  <dl>
+    <dt>What happened</dt><dd>The old Log4j in legacy-stub did not appear in Security, although it was confirmed loaded in the JVM (423 classes).</dd>
+    <dt>What the data showed</dt><dd>No vulnerability events at all in 7 days, only compliance events. The runtime vulnerability setting had no object, so defaults applied.</dd>
+    <dt>Cause</dt><dd>Runtime vulnerability analytics is off by default in a tenant.</dd>
+    <dt>Fix and proof</dt><dd>Two scoped settings objects that monitor only the gov-demo namespace. Verified: 102 distinct vulnerabilities in 24 hours in one namespace, log4j-core 2.14.1 flagged CRITICAL. First findings took longer than 12 minutes.</dd>
+  </dl>
+</article>
+<article class="card issue" data-found="dt" id="i5">
+  <div class="head"><span class="num">5</span><h3>Every proxied call was named POST /</h3></div>
+  <div class="tags"><span class="tag f-dt">Dynatrace data</span><span class="tag area">Telemetry</span><span class="tag st-fixed">Fixed</span><span class="date">11 Nov</span></div>
+  <dl>
+    <dt>What happened</dt><dd>In Dynatrace the web service showed one route for all API traffic, which hid which endpoint was slow.</dd>
+    <dt>What the data showed</dt><dd>Route breakdown for web: POST / dominated with p95 about 1 s, while the real endpoints were invisible.</dd>
+    <dt>Cause</dt><dd>The proxy was mounted with app.use and no path, so Express reported the route as /.</dd>
+    <dt>Fix and proof</dt><dd>One Express route per API endpoint plus a fallback. Verified: 159 of 160 spans on the new pod carry the route, for example POST /api/claims/:claimId/eligibility at p95 157 ms and POST /api/assistant at p95 1,585 ms.</dd>
+  </dl>
+</article>
+<article class="card issue" data-found="dt" id="i6">
+  <div class="head"><span class="num">6</span><h3>Davis was late, fragmented and gave no root cause</h3></div>
+  <div class="tags"><span class="tag f-dt">Dynatrace data</span><span class="tag area">Problems</span><span class="tag st-accepted">Accepted</span><span class="date">30 Oct</span></div>
+  <dl>
+    <dt>What happened</dt><dd>During monday_peak nothing was raised for about 9 minutes while two SLOs were already burning.</dd>
+    <dt>What the data showed</dt><dd>Three ACTIVE problems arrived later, root cause None. web problems ended at the placeholder Requests to unmonitored hosts. Four stayed active for over 20 minutes.</dd>
+    <dt>Cause</dt><dd>Hypothesis, not confirmed: problem correlation follows the OneAgent call graph, where the OpenTelemetry-only claims-api is a placeholder. Auto-adaptive baselines on a laptop with bursty load add noise.</dd>
+    <dt>Fix and proof</dt><dd>Decision: not tuned. The SLOs carry the burn story and the runbook does not promise a root cause.</dd>
+  </dl>
+</article>
+<article class="card issue" data-found="user" id="i7">
+  <div class="head"><span class="num">7</span><h3>Requests to unmonitored hosts in the service map</h3></div>
+  <div class="tags"><span class="tag f-user">User in the UI</span><span class="tag area">Topology</span><span class="tag st-accepted">Accepted</span><span class="date">30 Oct</span></div>
+  <dl>
+    <dt>What happened</dt><dd>The classic service view showed web calling an unmonitored host, with a problem badge.</dd>
+    <dt>What the data showed</dt><dd>All 4,000 or so client calls from web in 2 hours go to claims-api:8000. The newer Services app map showed web to claims-api, llm-gateway, database and payment-worker with no such box.</dd>
+    <dt>Cause</dt><dd>A display limit of the classic service model for a call from a OneAgent service to an OpenTelemetry-only service. Not lost data.</dd>
+    <dt>Fix and proof</dt><dd>Accepted. Use the newer Services app, with a short time window.</dd>
+  </dl>
+</article>
+<article class="card issue" data-found="user" id="i8">
+  <div class="head"><span class="num">8</span><h3>Locust stopped creating claims</h3></div>
+  <div class="tags"><span class="tag f-user">User in the UI</span><span class="tag area">Load</span><span class="tag st-fixed">Fixed</span><span class="date">2 Nov</span></div>
+  <dl>
+    <dt>What happened</dt><dd>make up showed no data. The tenant had no business events for 30 minutes.</dd>
+    <dt>What the data showed</dt><dd>Locust counters: POST /api/assistant 46,305 against POST /api/claims 2,890. Postgres held 0 claims after retention ran.</dd>
+    <dt>Cause</dt><dd>Switching to the assistant profile and back left Locust with the restricted user classes, so all four users were chat users.</dd>
+    <dt>Fix and proof</dt><dd>Two attempts. Draining users on a profile change did not help. Naming the classes explicitly for every profile did: claims created went from 18 to 53 in the retest.</dd>
+  </dl>
+</article>
+<article class="card issue" data-found="test" id="i9">
+  <div class="head"><span class="num">9</span><h3>Masking missed digits and risked trace ids</h3></div>
+  <div class="tags"><span class="tag f-test">Hands-on test</span><span class="tag area">Privacy</span><span class="tag st-fixed">Fixed</span><span class="date">30 Oct</span></div>
+  <dl>
+    <dt>What happened</dt><dd>A first pattern for TFN and Medicare numbers looked fine on paper.</dd>
+    <dt>What the data showed</dt><dd>Read-only DQL on real data: a bare nine-digit pattern hit digits inside the hex trace_id and left the last digit of a ten-digit Medicare number.</dd>
+    <dt>Cause</dt><dd>No label anchor in the pattern.</dd>
+    <dt>Fix and proof</dt><dd>Patterns anchored on the label with a lookbehind. Verified: 6 of 6 log lines and 28 of 28 prompt spans masked, none in clear. 373 older prompts recorded before masking stayed in clear until retention.</dd>
+  </dl>
+</article>
+<article class="card issue" data-found="test" id="i10">
+  <div class="head"><span class="num">10</span><h3>The legacy stub killed its own demo</h3></div>
+  <div class="tags"><span class="tag f-test">Hands-on test</span><span class="tag area">Resilience</span><span class="tag st-fixed">Fixed</span><span class="date">30 Oct</span></div>
+  <dl>
+    <dt>What happened</dt><dd>In slow mode the pod restarted partway through the peak and the toggle reset to normal.</dd>
+    <dt>What the data showed</dt><dd>Found by running monday_peak. A reset during the peak could not reach the stub either.</dd>
+    <dt>Cause</dt><dd>The health probe shared the 8 Tomcat threads, so liveness failed under load. The control API starved the same way.</dd>
+    <dt>Fix and proof</dt><dd>A separate HTTP server on port 8301 for health and control. Under saturation the main port timed out after 8 s while 8301 answered in 0.02 s.</dd>
+  </dl>
+</article>
+<article class="card issue" data-found="test" id="i11">
+  <div class="head"><span class="num">11</span><h3>Shrinking the Tomcat pool returned HTTP 500</h3></div>
+  <div class="tags"><span class="tag f-test">Hands-on test</span><span class="tag area">Resilience</span><span class="tag st-fixed">Fixed</span><span class="date">30 Oct</span></div>
+  <dl>
+    <dt>What happened</dt><dd>Setting pool_threads below the minimum threw IllegalArgumentException and recorded the wrong state.</dd>
+    <dt>What the data showed</dt><dd>Found by testing the toggle bounds.</dd>
+    <dt>Cause</dt><dd>minSpareThreads was higher than the new maximum.</dd>
+    <dt>Fix and proof</dt><dd>Lower minSpareThreads first and update the state only after the resize succeeds.</dd>
+  </dl>
+</article>
+<article class="card issue" data-found="test" id="i12">
+  <div class="head"><span class="num">12</span><h3>The submission SLOs never burned</h3></div>
+  <div class="tags"><span class="tag f-test">Hands-on test</span><span class="tag area">SLOs</span><span class="tag st-fixed">Fixed</span><span class="date">30 Oct</span></div>
+  <dl>
+    <dt>What happened</dt><dd>During monday_peak the submission availability and latency SLOs stayed at 100 percent.</dd>
+    <dt>What the data showed</dt><dd>Every indicator was run as a query against the peak data before creating it.</dd>
+    <dt>Cause</dt><dd>Submitting only queues the payment, so the slow tier does not touch it.</dd>
+    <dt>Fix and proof</dt><dd>Kept as green controls and added three that do burn. Observed: eligibility latency FAILURE at 75.86 percent, payment completion FAILURE at 98.36 percent, assistant availability down to 90.9 percent in the outage tests.</dd>
+  </dl>
+</article>
+<article class="card issue" data-found="test" id="i13">
+  <div class="head"><span class="num">13</span><h3>A dashboard tile reported the wrong thing</h3></div>
+  <div class="tags"><span class="tag f-test">Hands-on test</span><span class="tag area">Dashboards</span><span class="tag st-fixed">Fixed</span><span class="date">30 Oct</span></div>
+  <dl>
+    <dt>What happened</dt><dd>Where sessions end showed stale and misplaced sessions.</dd>
+    <dt>What the data showed</dt><dd>Checked the values, not only that the query ran: it counted 20 single-view sessions from the hash routing era and placed completers wrongly because view events are not strictly ordered.</dd>
+    <dt>Cause</dt><dd>It used the last view per session.</dd>
+    <dt>Fix and proof</dt><dd>Replaced by furthest step reached per session. Final numbers agree with 5 of 14 sessions completing.</dd>
+  </dl>
+</article>
+<article class="card issue" data-found="test" id="i14">
+  <div class="head"><span class="num">14</span><h3>OpenPipeline and query gotchas</h3></div>
+  <div class="tags"><span class="tag f-test">Hands-on test</span><span class="tag area">Pipelines</span><span class="tag st-fixed">Fixed</span><span class="date">30 Oct</span></div>
+  <dl>
+    <dt>What happened</dt><dd>The tenant rejected the first pipeline apply, and some queries returned nothing.</dd>
+    <dt>What the data showed</dt><dd>contains() is not enabled in OpenPipeline matchers. dtctl apply --dry-run is not server-side validation. matchesPhrase returns nothing on JSON log text in a fetch. OneAgent log ingestion lifts only trace_id and span_id.</dd>
+    <dt>Cause</dt><dd>Platform behaviour that is not obvious from the documentation.</dd>
+    <dt>Fix and proof</dt><dd>matchesPhrase in matchers, contains() in fetch queries, JSON parsed first in the pipeline. All recorded in the runbook.</dd>
+  </dl>
+</article>
+<article class="card issue" data-found="user" id="i15">
+  <div class="head"><span class="num">15</span><h3>The portal was blank after the first deploy</h3></div>
+  <div class="tags"><span class="tag f-user">User in the UI</span><span class="tag area">Web</span><span class="tag st-fixed">Fixed</span><span class="date">30 Oct</span></div>
+  <dl>
+    <dt>What happened</dt><dd>Opening the portal showed an empty page.</dd>
+    <dt>What the data showed</dt><dd>A browser run showed /api.js returning 404 from claims-api.</dd>
+    <dt>Cause</dt><dd>pathFilter /api is a prefix match and proxied /api.js to the API.</dd>
+    <dt>Fix and proof</dt><dd>pathFilter /api/. Lesson recorded: curl checks never loaded the single page app modules, so the UI needs a real browser run.</dd>
+  </dl>
+</article>
+<article class="card issue" data-found="user" id="i16">
+  <div class="head"><span class="num">16</span><h3>Out-of-range hours blocked and no sign out</h3></div>
+  <div class="tags"><span class="tag f-user">User in the UI</span><span class="tag area">Web</span><span class="tag st-fixed">Fixed</span><span class="date">11 Nov</span></div>
+  <dl>
+    <dt>What happened</dt><dd>A tester could not submit out-of-range hours and there was no way to sign out.</dd>
+    <dt>What the data showed</dt><dd>The form had min and max, so the browser stopped the request. The API already answers 422.</dd>
+    <dt>Cause</dt><dd>Browser validation in front of an API that validates anyway.</dd>
+    <dt>Fix and proof</dt><dd>novalidate on the details form and a Sign out link that also clears the assistant conversation id. Not clicked through in a browser yet.</dd>
+  </dl>
+</article>
+<article class="card issue" data-found="test" id="i17">
+  <div class="head"><span class="num">17</span><h3>dtctl lost its login when calls ran in parallel</h3></div>
+  <div class="tags"><span class="tag f-test">Hands-on test</span><span class="tag area">Process</span><span class="tag st-fixed">Fixed</span><span class="date">30 Oct, 11 Nov</span></div>
+  <dl>
+    <dt>What happened</dt><dd>dtctl asked for a new login. It happened twice, including during this session.</dd>
+    <dt>What the data showed</dt><dd>invalid_grant: the refresh token was reused. Several dtctl processes had refreshed the OAuth token at the same moment.</dd>
+    <dt>Cause</dt><dd>Parallel dtctl calls, including a background poller next to a foreground query.</dd>
+    <dt>Fix and proof</dt><dd>Rule: one dtctl call at a time, no parallel monitors. The user logs in again.</dd>
+  </dl>
+</article>
+  </div>
+
+  <h2>Checked and clean</h2>
+  <div class="grid">
+<div class="card"><b>Private data in chat sessions</b><br>Raw pod logs for 48 hours and the Dynatrace logs had no TFN or Medicare text, and spans held no prompt text because recording was off. With recording now on by default, identifiers are masked in spans: 9 of 11 sampled spans carry the marker and none has a nine-digit number left.</div><div class="card"><b>Prompt injection</b><br>Blocked by prompt_injection_check (INJECTION_PATTERN, finish reason content_filter) on the user&#x27;s own session.</div>
+  </div>
+
+  <h2>Still open or unverified</h2>
+  <div class="card"><ul><li>AI Observability duration tile shows a different unit from the table (the metric value is correct).</li><li>Guardrail activation card and by-type chart stay at 0 (accepted, Bedrock-style attributes are an option).</li><li>CVE-2021-44228 is not matched by my query field, so it is unconfirmed in the Security view.</li><li>Session Replay and the AI Observability view of the evaluation events are not checked.</li><li>Deploy to a non-local cluster through a registry is not tested.</li></ul></div>
+
+  <p class="foot">Source: PROGRESS.md in the repository. Figures are quoted from the log entries, not recomputed.</p>
+</main>
+<script>
+  document.querySelectorAll(".chip").forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      var f = chip.getAttribute("data-filter");
+      document.querySelectorAll(".chip").forEach(function (c) { c.classList.toggle("on", c === chip); });
+      document.querySelectorAll(".issue").forEach(function (card) {
+        card.classList.toggle("hidden", f !== "all" && card.getAttribute("data-found") !== f);
+      });
+    });
+  });
+</script>
+</body>
+</html>

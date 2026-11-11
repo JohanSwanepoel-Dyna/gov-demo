@@ -18,9 +18,9 @@ scenarios:
       payment-worker: {concurrency: 1}
     load: peak
   bad_release:
-    description: Eligibility release v2_bad. Deployment event correlation and a problem on claims-api.
+    description: Eligibility release v2. A slow schedule lookup on every check and a failure for ages 45 to 54. Deployment event correlation and a problem on claims-api.
     toggles:
-      claims-api: {eligibility_release: v2_bad}
+      claims-api: {eligibility_release: v2}
     load: baseline
   upload_dropoff:
     description: Slow uploads. RUM funnel drop-off and Session Replay.

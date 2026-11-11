@@ -2,6 +2,8 @@
 import random
 import time
 
+from opentelemetry import trace
+
 MIN_AGE = 16
 MAX_AGE = 70
 MIN_CARING_HOURS = 20
@@ -11,18 +13,29 @@ HOURS_STEP_CENTS = 1000  # per full 10 hours above the minimum, capped at 3 step
 
 
 def evaluate(age, income_band, caring_hours, residency, risk_flag, payment_type, release="v1"):
+    if release == "v2":
+        return _evaluate_v2(age, income_band, caring_hours, residency, risk_flag, payment_type)
+    return _evaluate(age, income_band, caring_hours, residency, risk_flag, payment_type)
+
+
+# Release 2 scales the fortnightly amount by an age band rate factor from the published rate schedule.
+RATE_SCHEDULE = [(16, 24, 1.0), (25, 44, 1.0), (55, 70, 1.0)]  # (from age, to age, factor)
+tracer = trace.get_tracer("claims-api")
+
+
+def _load_rate_schedule():
+    """Reads the age band rate schedule from the policy service."""
+    with tracer.start_as_current_span("policy.load_rate_schedule"):
+        time.sleep(random.uniform(0.4, 1.2))  # stands in for the policy service round trip
+        return RATE_SCHEDULE
+
+
+def _evaluate_v2(age, income_band, caring_hours, residency, risk_flag, payment_type):
     result = _evaluate(age, income_band, caring_hours, residency, risk_flag, payment_type)
-    return _v2_bad(result, age) if release == "v2_bad" else result
-
-
-def _v2_bad(result, age):
-    """A bad release: slower, occasionally failing, and wrong for one age band (45 to 54)."""
-    time.sleep(random.uniform(0.4, 1.2))
-    if random.random() < 0.10:
-        raise RuntimeError("eligibility engine v2: unexpected null in age band table")
-    if 45 <= age <= 54 and result["decision"] != "ineligible":
-        return {"decision": "ineligible", "reason_codes": ["INCOME_TOO_HIGH"], "amount_cents": 0}
-    return result
+    if result["decision"] == "ineligible":
+        return result
+    factor = next((f for lo, hi, f in _load_rate_schedule() if lo <= age <= hi), None)
+    return {**result, "amount_cents": int(result["amount_cents"] * factor)}
 
 
 def _evaluate(age, income_band, caring_hours, residency, risk_flag, payment_type):

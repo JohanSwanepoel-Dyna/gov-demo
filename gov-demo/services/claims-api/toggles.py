@@ -8,7 +8,7 @@ from fastapi import Header, HTTPException
 # The env var is the upper-cased name.
 SPEC = {
     "capture_content": ("on", ("on", "off")),
-    "eligibility_release": ("v1", ("v1", "v2_bad")),
+    "eligibility_release": ("v1", ("v1", "v2")),
     "upload_fault": ("none", ("none", "slow", "error")),
     "log_pii": ("off", ("on", "off")),
 }

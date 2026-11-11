@@ -24,7 +24,7 @@ Eligibility rules are in `eligibility.py`. All values are fictional.
 | Toggle | Values | Effect |
 |---|---|---|
 | `capture_content` | on, off | on: `chat` spans record prompts and outputs, including any PII |
-| `eligibility_release` | v1, v2_bad | v2_bad: slower, 10% errors, wrong decisions for ages 45 to 54. Changing it logs a deployment event |
+| `eligibility_release` | v1, v2 | v2: reads the rate schedule on every check (0.4 to 1.2 s) and fails for ages 45 to 54 (no rate factor for that band). Changing it logs a deployment event |
 | `upload_fault` | none, slow, error | slow: 3 to 8 s. error: 15% HTTP 500 |
 | `log_pii` | on, off | on: login and eligibility logs include TFN and Medicare number in clear |
  These paths are not under `/api`, so the web proxy does not expose them.

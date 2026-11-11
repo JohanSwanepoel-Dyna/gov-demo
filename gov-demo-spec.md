@@ -201,7 +201,7 @@ All services expose `GET /control/toggles` and `PUT /control/toggles` with JSON 
 |---|---|---|---|
 | `legacy-stub` | `mode` | normal, slow, brownout | normal: 50-150 ms. slow: 2-5 s. brownout: slow plus 15% HTTP 500 |
 | `legacy-stub` | `pool_threads` | 1 to 64 | Resizes the Tomcat worker pool at runtime (no restart needed) |
-| `claims-api` | `eligibility_release` | v1, v2_bad | v2_bad returns wrong decisions for one age band, adds latency, raises a fraction of errors. Toggle flip logs a deployment line that OpenPipeline turns into a Dynatrace deployment event |
+| `claims-api` | `eligibility_release` | v1, v2 | v2 reads the age band rate schedule on every check (adds 0.4 to 1.2 s, a child span `policy.load_rate_schedule`) and raises an error for ages 45 to 54 because the schedule has no band for them (a realistic code defect an agent can find and fix; see `docs/agentic-demo.md`). Toggle flip logs a deployment line that OpenPipeline turns into a Dynatrace deployment event |
 | `claims-api` | `upload_fault` | none, slow, error | slow: 3-8 s. error: 15% HTTP 500 on upload |
 | `claims-api` | `log_pii` | on, off | on: logs TFN and Medicare number in clear in request and error logs |
 | `llm-gateway` | `latency` | normal, slow | normal: 300-900 ms. slow: 6-12 s |
@@ -217,7 +217,7 @@ All services expose `GET /control/toggles` and `PUT /control/toggles` with JSON 
 |---|---|---|---|
 | `baseline` | All defaults | Steady low | Baselines, healthy SLOs |
 | `monday_peak` | Legacy `slow`, worker concurrency 1 | Peak wave | Davis root cause on legacy tier, SLO burn on claim submission, queue growth |
-| `bad_release` | `eligibility_release=v2_bad` | Steady medium | Deployment event correlation, problem on claims-api |
+| `bad_release` | `eligibility_release=v2` | Steady medium | Deployment event correlation, problem on claims-api |
 | `upload_dropoff` | `upload_fault=slow` | Playwright abandoner plus completer | RUM funnel drop-off, Session Replay |
 | `ai_injection` | `guardrails=off` | Assistant user (injection prompts) | AI security signal, data exposure |
 | `ai_pii` | `log_pii=on` (`capture_content` is on by default) | Assistant user (PII prompts) | Log and span masking via OpenPipeline |
