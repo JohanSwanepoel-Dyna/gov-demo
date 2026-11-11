@@ -36,3 +36,7 @@ dd { margin: 0; }
 .chat-chips-label { margin: 8px 0 0; font-size: 0.8rem; color: #555; }
 .chat-body .chat-chip { margin: 0; padding: 4px 8px; font-size: 0.85rem; background: #fff; color: var(--accent); border: 1px solid var(--accent); }
 .chat-body .chat-chip:disabled { opacity: 0.5; cursor: wait; }
+
+.band .wrap { position: relative; }
+#session { position: absolute; right: 16px; top: 0; }
+.linklike { background: none; border: 0; color: #fff; text-decoration: underline; cursor: pointer; font: inherit; padding: 0; }

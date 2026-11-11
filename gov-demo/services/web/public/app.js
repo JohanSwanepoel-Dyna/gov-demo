@@ -65,7 +65,8 @@ const views = {
     const income = h("select", { id: "inc" },
       h("option", { value: "low" }, "Low"), h("option", { value: "medium" }, "Medium"), h("option", { value: "high" }, "High"));
     const hours = h("input", { id: "hrs", type: "number", min: "0", max: "168", value: "30", required: true });
-    show(stepper(2), h("form", { class: "card", onsubmit: async (e) => {
+    // novalidate: the API is the validator, so an out-of-range value reaches it and the person sees its error.
+    show(stepper(2), h("form", { class: "card", novalidate: true, onsubmit: async (e) => {
       e.preventDefault();
       try {
         sessionStorage.setItem("result", JSON.stringify(
@@ -139,6 +140,16 @@ const views = {
 
 const PROTECTED = new Set(["payment-type", "details", "eligibility", "upload", "review", "status"]);
 
+function signOut() {
+  sessionStorage.clear();
+  go("login");
+}
+
+function syncSession() {
+  const slot = document.getElementById("session");
+  slot.replaceChildren(token() ? h("button", { class: "linklike", onclick: signOut }, "Sign out") : "");
+}
+
 function route() {
   let name = location.pathname.replace(/^\//, "") || "login";
   if (!views[name] || (PROTECTED.has(name) && !token())) name = "login";
@@ -146,6 +157,7 @@ function route() {
   if (location.pathname !== "/" + name) history.replaceState({}, "", "/" + name);  // every step is its own URL, so RUM sees a view per step
   stepAction("step_" + name.replace("-", "_"));
   views[name]();
+  syncSession();
   syncWidget();
 }
 

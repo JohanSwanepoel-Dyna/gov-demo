@@ -22,7 +22,20 @@ app.use((req, res, next) => {
 app.get("/healthz", (req, res) => res.json({ status: "ok" }));
 
 // Proxy /api/* untouched (request bodies are streamed, trace headers are forwarded).
-app.use(createProxyMiddleware({ target: CLAIMS_API_URL, changeOrigin: true, pathFilter: "/api/" }));
+// Each endpoint is its own Express route, so OneAgent reports a meaningful http.route (for example
+// /api/claims/:claimId/eligibility) instead of "/" for every proxied call.
+const apiProxy = createProxyMiddleware({ target: CLAIMS_API_URL, changeOrigin: true, pathFilter: "/api/" });
+const API_ROUTES = [
+  "/api/login",
+  "/api/claims",
+  "/api/claims/:claimId",
+  "/api/claims/:claimId/eligibility",
+  "/api/claims/:claimId/documents",
+  "/api/claims/:claimId/submit",
+  "/api/assistant",
+];
+for (const route of API_ROUTES) app.all(route, apiProxy);
+app.use("/api/", apiProxy);  // anything not listed above still reaches claims-api
 
 app.use(express.static(path.join(here, "public")));
 // Each step of the journey is a URL of its own. Serve the single page app for all of them.
