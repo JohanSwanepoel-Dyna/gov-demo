@@ -1,0 +1,47 @@
+flowchart LR
+    subgraph Load["Load generation"]
+        LOC["locust :8089<br/>protocol-level traffic<br/>always on"]
+        PW["Playwright (on demand)<br/>real Chrome sessions"]
+    end
+
+    subgraph NS["Kubernetes namespace: gov-demo"]
+        WEB["web :8080<br/>Node.js + static SPA<br/>OneAgent"]
+        API["claims-api :8000<br/>Python FastAPI<br/>OpenTelemetry"]
+        LLM["llm-gateway :8100<br/>Python, mock LLM provider<br/>OpenTelemetry"]
+        PAY["payment-worker :8200<br/>Python queue consumer<br/>OpenTelemetry"]
+        LEG["legacy-stub :8300<br/>Java / Tomcat SOAP-style<br/>OneAgent"]
+        PG[("postgres :5432<br/>claims, documents,<br/>payment_queue")]
+        SEED["seed job<br/>citizens + credentials"]
+        RET["retention CronJob<br/>every 15 min"]
+    end
+
+    subgraph DT["Dynatrace"]
+        OP["Operator + DynaKube<br/>applicationMonitoring<br/>telemetryIngest (OTLP)"]
+        TEN["Tenant<br/>traces, RUM, logs,<br/>business events, SLOs,<br/>dashboard, AI Observability"]
+    end
+
+    CTRL["make scenario<br/>toggle APIs<br/>(X-Demo-Control)"]
+
+    LOC -->|HTTP| WEB
+    PW -->|browser| WEB
+    WEB -->|"/api/* proxy"| API
+    API -->|chat| LLM
+    API -->|SQL| PG
+    API -->|customer lookup| LEG
+    API -->|"enqueue + W3C trace context"| PG
+    PG -->|"poll queue"| PAY
+    PAY -->|post payment| LEG
+    SEED --> PG
+    RET --> PG
+
+    CTRL -.->|"kubectl port-forward"| API
+    CTRL -.-> LLM
+    CTRL -.-> PAY
+    CTRL -.-> LEG
+
+    WEB -. "OneAgent injection" .-> OP
+    LEG -. "OneAgent injection" .-> OP
+    API -. "OTLP :4318" .-> OP
+    LLM -. OTLP .-> OP
+    PAY -. OTLP .-> OP
+    OP --> TEN

@@ -37,6 +37,11 @@ Scenarios are applied with `make scenario NAME=<name>` from `gov-demo/`.
 
 ## Architecture
 
+![Architecture overview of the gov-demo services and Dynatrace](docs/diagrams/architecture-overview.png)
+
+<details>
+<summary>Diagram source (Mermaid)</summary>
+
 ```mermaid
 flowchart LR
     U["Citizens<br/>Locust + Playwright (Chrome)"] --> WEB
@@ -61,6 +66,8 @@ flowchart LR
     K8S -->|"OneAgent + OTLP"| DT["Dynatrace tenant<br/>traces, RUM, logs, business events,<br/>SLOs, dashboard, AI Observability"]
     CTRL["make scenario<br/>toggle APIs"] -.->|port-forward| K8S
 ```
+
+</details>
 
 Five services, one database and a load generator, running on Kubernetes with the Dynatrace Operator. The full diagram, with per-service ports and the instrumentation split, is in [gov-demo/README.md](gov-demo/README.md#architecture).
 

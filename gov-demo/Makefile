@@ -94,3 +94,7 @@ demo-status:
 	scenarios/agentic_demo.sh status
 demo-reset:
 	scenarios/agentic_demo.sh reset
+
+.PHONY: diagrams
+diagrams:
+	./scripts/diagrams.sh

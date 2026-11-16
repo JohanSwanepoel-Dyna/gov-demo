@@ -1,0 +1,22 @@
+flowchart LR
+    U["Citizens<br/>Locust + Playwright (Chrome)"] --> WEB
+
+    subgraph K8S["Kubernetes namespace: gov-demo"]
+        WEB["web<br/>Node.js SPA + proxy<br/>OneAgent"]
+        API["claims-api<br/>Python FastAPI<br/>OpenTelemetry"]
+        LLM["llm-gateway<br/>mock LLM provider<br/>OpenTelemetry"]
+        PAY["payment-worker<br/>queue consumer<br/>OpenTelemetry"]
+        LEG["legacy-stub<br/>Java 21, old Log4j<br/>OneAgent"]
+        PG[("Postgres<br/>claims + payment queue")]
+    end
+
+    WEB -->|/api| API
+    API -->|assistant chat| LLM
+    API -->|customer lookup| LEG
+    API --> PG
+    API -->|enqueue with trace context| PG
+    PG -->|poll| PAY
+    PAY -->|post payment| LEG
+
+    K8S -->|"OneAgent + OTLP"| DT["Dynatrace tenant<br/>traces, RUM, logs, business events,<br/>SLOs, dashboard, AI Observability"]
+    CTRL["make scenario<br/>toggle APIs"] -.->|port-forward| K8S

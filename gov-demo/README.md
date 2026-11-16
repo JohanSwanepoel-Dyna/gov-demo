@@ -21,6 +21,11 @@ A fictional "Department of Community Services" portal built to show Dynatrace ob
 
 ## Architecture
 
+![Detailed architecture with ports and instrumentation paths](docs/diagrams/architecture.png)
+
+<details>
+<summary>Diagram source (Mermaid)</summary>
+
 ```mermaid
 flowchart LR
     subgraph Load["Load generation"]
@@ -70,6 +75,8 @@ flowchart LR
     PAY -. OTLP .-> OP
     OP --> TEN
 ```
+
+</details>
 
 ### How a claim flows
 
